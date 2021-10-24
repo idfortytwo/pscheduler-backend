@@ -1,0 +1,86 @@
+@startuml
+
+class abc.ABCMeta <<metaclass>>
+
+package event {
+    abstract class Event {
+        +{static} event_type
+        +command_args: [str]
+        +schedule_data: any
+        +get_run_date(): datetime
+        +get_next_date(): datetime
+    }
+    Event ----u|> models.EventModel
+    Event ----[dashed]> models.EventTypeModel
+    Event -r[dashed]-> abc.ABCMeta
+    Event -----u[dashed]-> connection.Session
+
+    class CronEvent {
+        +get_run_date(): datetime
+        +get_next_date(): datetime
+    }
+    class IntervalEvent{
+        +get_run_date(): datetime
+        +get_next_date(): datetime
+    }
+    class DateEvent{
+        +get_run_date(): datetime
+        +get_next_date(): datetime
+    }
+    CronEvent     -u[dashed]-|> Event
+    IntervalEvent -u[dashed]-|> Event
+    DateEvent     -u[dashed]-|> Event
+
+    class Events {
+        - _event_models = [Event]
+        - {static} _get_query_for_cls(session, cls): [Event]
+        + fetch(session): Generator[Event]
+    }
+    Events -u[dashed]-> CronEvent
+    Events -u[dashed]-> IntervalEvent
+    Events -u[dashed]-> DateEvent
+}
+
+package sqlalchemy {
+    class sqlalchemy.DeclarativeMeta
+    class sqlalchemy.Column
+    sqlalchemy.DeclarativeMeta -d[hidden]- sqlalchemy.Column
+}
+
+package connection {
+    class Session
+    class session_scope <<contextmanager>>
+    Session -[dashed]-> engine
+    session_scope -[dashed]> Session
+}
+
+connection -[dashed]> sqlalchemy
+
+package models {
+    class Base
+    Base --[dashed]-> DeclarativeABCMeta
+
+    class EventTypeModel {
+        + {static} event_type_id: Column
+        + {static} event_type: Column
+    }
+    EventTypeModel ---------[dashed]> sqlalchemy
+    EventTypeModel ---u[dashed]|> Base
+
+    class EventModel {
+        + {static} event_id: Column
+        + {static} event_type_id: Column
+        + {static} command_args: Column
+        + {static} schedule_data: Column
+    }
+    EventModel -l[dashed]> sqlalchemy
+    EventModel --[dashed]u-|> Base
+    EventModel -l- EventTypeModel
+
+    class DeclarativeABCMeta <<metaclass>>
+    DeclarativeABCMeta -u|> sqlalchemy.DeclarativeMeta
+    DeclarativeABCMeta -|> abc.ABCMeta
+}
+
+
+@enduml
