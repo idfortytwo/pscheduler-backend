@@ -3,3 +3,5 @@ test.*
 pscheduler/db/prep.py
 db.sqlite
 __pycache__
+plantuml.jar
+diagram.png
