@@ -1,6 +1,6 @@
 import abc
 
-from sqlalchemy import Column, Text, Integer, ForeignKey
+from sqlalchemy import Column, Text, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, DeclarativeMeta
 
 
@@ -17,10 +17,12 @@ class EventModel(Base):
     event_id = Column(Integer, primary_key=True, autoincrement=True)
     event_type_id = Column(Integer, ForeignKey('event_types.event_type_id'), nullable=False)
     command_args = Column(Text, nullable=False)
-    schedule_data = Column(Text, nullable=False)
+    schedule_params = Column(Text, nullable=False)
+    starting_date = Column(DateTime)
+    last_run = Column(DateTime)
 
     def __repr__(self):
-        return f'EventModel({self.event_id}, {self.event_type_id}, {self.command_args}, {self.schedule_data})'
+        return f'EventModel({self.event_id}, {self.event_type_id}, {self.command_args}, {self.schedule_params})'
 
 
 class EventTypeModel(Base):
