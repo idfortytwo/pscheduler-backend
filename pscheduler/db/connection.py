@@ -1,24 +1,22 @@
-import sqlalchemy.orm
-
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from typing import ContextManager
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 
-engine = create_engine('sqlite:///db.sqlite')
-Session = sessionmaker(bind=engine)
+engine = create_async_engine('sqlite+aiosqlite:///db.sqlite')
+Session = sessionmaker(bind=engine, class_=AsyncSession)
 
 
-@contextmanager
-def session_scope() -> ContextManager[sqlalchemy.orm.Session]:
+@asynccontextmanager
+async def session_scope() -> ContextManager[AsyncSession]:
     """Provide a transactional scope around a series of operations."""
     session = Session()
     try:
         yield session
-        session.commit()
+        await session.commit()
     except:
-        session.rollback()
+        await session.rollback()
         raise
     finally:
-        session.close()
+        await session.close()
