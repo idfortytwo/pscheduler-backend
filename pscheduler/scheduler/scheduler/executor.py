@@ -21,7 +21,7 @@ class TaskExecutor:
         if self._timer_handle:
             self._timer_handle.cancel()
 
-    def _get_next_run_ts(self):
+    def _get_next_run_ts(self) -> float:
         run_date = next(self._next_run_date_it)
         loop_base_time = datetime.utcnow() - timedelta(seconds=self._loop.time())
         return (run_date - loop_base_time).total_seconds()
@@ -34,7 +34,7 @@ class TaskExecutor:
         return_code = await self._execute_process()
         print(f'finished with code {return_code}\n')
 
-    async def _execute_process(self):
+    async def _execute_process(self) -> int:
         commandargs = self._task_config.command_args
         sub: asyncio.subprocess.Process = await asyncio.create_subprocess_shell(
             commandargs,
