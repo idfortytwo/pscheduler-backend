@@ -11,15 +11,15 @@ class DeclarativeABCMeta(DeclarativeMeta, abc.ABCMeta):
 Base = declarative_base(metaclass=DeclarativeABCMeta)
 
 
-class EventModel(Base):
+class TaskConfigModel(Base):
     __tablename__ = 'events'
 
-    event_id = Column(Integer, primary_key=True, autoincrement=True)
-    event_type = Column(Text, nullable=False)
+    task_config_id = Column(Integer, primary_key=True, autoincrement=True)
     command_args = Column(Text, nullable=False)
-    schedule_params = Column(Text, nullable=False)
+    trigger_type = Column(Text, nullable=False)
+    trigger_args = Column(Text, nullable=False)
     starting_date = Column(DateTime)
     last_run = Column(DateTime)
 
     def __repr__(self):
-        return f'EventModel({self.event_id}, {self.event_type}, {self.command_args}, {self.schedule_params})'
+        return f'EventModel({self.task_config_id}, {self.trigger_type}, {self.command_args}, {self.trigger_args})'
