@@ -2,7 +2,7 @@
 
 class abc.ABCMeta <<metaclass>>
 
-package event {
+package scheduler.taskconfig {
     abstract class TaskConfig {
         + {static} trigger_type
         + trigger_args: any
@@ -63,7 +63,7 @@ package models {
 }
 
 
-package executor {
+package scheduler.executor {
     class TaskExecutor {
         - _task_config: TaskConfig
         - _loop: EventLoop
