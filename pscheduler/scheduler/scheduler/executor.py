@@ -3,7 +3,7 @@ from asyncio import TimerHandle
 from datetime import datetime, timedelta
 from typing import List, Dict
 
-from taskconfig import TaskConfig
+from scheduler.taskconfig import TaskConfig
 
 
 class TaskExecutor:
