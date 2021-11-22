@@ -10,7 +10,7 @@ class TaskExecutor:
     def __init__(self, task_config: TaskConfig):
         self._task_config = task_config
         self._loop = asyncio.get_event_loop()
-        self._next_run_date_it = iter(task_config.get_next_run_date_it())
+        self._next_run_date_it = task_config.get_next_run_date_it()
         self._timer_handle: TimerHandle
 
     def run(self):
