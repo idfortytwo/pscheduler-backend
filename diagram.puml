@@ -3,48 +3,40 @@
 class abc.ABCMeta <<metaclass>>
 
 package event {
-    abstract class Event {
-        +{static} event_type
-        +command_args: [str]
-        +schedule_data: any
-        +get_run_date(): datetime
-        +get_next_date(): datetime
+    abstract class TaskConfig {
+        + {static} trigger_type
+        + trigger_args: any
+        + command_args: [str]
+        + {abstract} get_run_date(): datetime
+        + {abstract} get_next_date(): datetime
     }
-    Event ----u|> models.EventModel
-    Event ----[dashed]> models.EventTypeModel
-    Event -r[dashed]-> abc.ABCMeta
-    Event -----u[dashed]-> connection.Session
+    TaskConfig --u|> models.TaskConfigModel
 
-    class CronEvent {
+    class CronTaskConfig {
         +get_run_date(): datetime
         +get_next_date(): datetime
     }
-    class IntervalEvent{
+    class IntervalTaskConfig{
         +get_run_date(): datetime
         +get_next_date(): datetime
     }
-    class DateEvent{
+    class DateTaskConfig{
         +get_run_date(): datetime
         +get_next_date(): datetime
     }
-    CronEvent     -u[dashed]-|> Event
-    IntervalEvent -u[dashed]-|> Event
-    DateEvent     -u[dashed]-|> Event
+    CronTaskConfig     -u[dashed]-|> TaskConfig
+    IntervalTaskConfig -u[dashed]-|> TaskConfig
+    DateTaskConfig     -u[dashed]-|> TaskConfig
 
-    class Events {
-        - _event_models = [Event]
-        - {static} _get_query_for_cls(session, cls): [Event]
-        + fetch(session): Generator[Event]
+    class TaskConfigs {
+        - _config_types = [TaskConfig]
+        - {static} _get_query_for_cls(session, cls): [TaskConfig]
+        + fetch(session): Generator[TaskConfig]
     }
-    Events -u[dashed]-> CronEvent
-    Events -u[dashed]-> IntervalEvent
-    Events -u[dashed]-> DateEvent
-}
-
-package sqlalchemy {
-    class sqlalchemy.DeclarativeMeta
-    class sqlalchemy.Column
-    sqlalchemy.DeclarativeMeta -d[hidden]- sqlalchemy.Column
+    TaskConfigs -u[dashed]-> CronTaskConfig
+    TaskConfigs -u[dashed]-> IntervalTaskConfig
+    TaskConfigs -u[dashed]-> DateTaskConfig
+    TaskConfigs -l[dashed]-> connection.Session
 }
 
 package connection {
@@ -54,33 +46,48 @@ package connection {
     session_scope -[dashed]> Session
 }
 
-connection -[dashed]> sqlalchemy
-
 package models {
     class Base
-    Base --[dashed]-> DeclarativeABCMeta
+    Base -[dashed]l> DeclarativeABCMeta
 
-    class EventTypeModel {
-        + {static} event_type_id: Column
-        + {static} event_type: Column
-    }
-    EventTypeModel ---------[dashed]> sqlalchemy
-    EventTypeModel ---u[dashed]|> Base
-
-    class EventModel {
-        + {static} event_id: Column
-        + {static} event_type_id: Column
+    class TaskConfigModel {
+        + {static} task_config_id: Column
+        + {static} trigger_type: Column
+        + {static} trigger_args: Column
         + {static} command_args: Column
-        + {static} schedule_data: Column
     }
-    EventModel -l[dashed]> sqlalchemy
-    EventModel --[dashed]u-|> Base
-    EventModel -l- EventTypeModel
+    TaskConfigModel .-u|> Base
 
     class DeclarativeABCMeta <<metaclass>>
-    DeclarativeABCMeta -u|> sqlalchemy.DeclarativeMeta
-    DeclarativeABCMeta -|> abc.ABCMeta
+    DeclarativeABCMeta --u|> abc.ABCMeta
 }
 
+
+package executor {
+    class TaskExecutor {
+        - _task_config: TaskConfig
+        - _loop: EventLoop
+        - _next_run_date_it: Iterator[Datetime]
+        - _timer_handle: TimerHandle
+
+        + run()
+        + stop()
+        - _get_next_run_ts(): float
+        - _run_iteration()
+        - _execute_process(): int
+    }
+
+    class TaskManager {
+        + {r/o} task_dict: Dict[int, TaskExecutor]
+        + add_tasK(TaskConfig)
+        + run_task(int)
+        + run_all()
+        + stop_task(int)
+        + stop_all()
+    }
+    TaskManager "1" --l* "n" TaskExecutor
+}
+TaskExecutor "1" .-o "1" TaskConfig
+TaskManager .-> TaskConfig
 
 @enduml

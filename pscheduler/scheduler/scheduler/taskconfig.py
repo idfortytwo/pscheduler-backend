@@ -1,7 +1,7 @@
 import ast
 
 from datetime import datetime, timedelta
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod, ABC
 from typing import Type, List, Iterator
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,7 @@ from db.connection import Session
 from db.models import TaskConfigModel
 
 
-class TaskConfig(TaskConfigModel, metaclass=ABCMeta):
+class TaskConfig(TaskConfigModel, ABC):
     @property
     @abstractmethod
     def _trigger_type(self) -> str:
