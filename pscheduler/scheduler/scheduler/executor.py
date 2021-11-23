@@ -46,20 +46,27 @@ class TaskExecutor:
 
         return sub.returncode
 
+    def __str__(self):
+        return f"TaskExecutor('{self._task_config.command_args}', {self._task_config.trigger_type}, '{self._task_config.trigger_args}')"
+
 
 class TaskManager:
-    def __init__(self, task_configs: List[TaskConfig]):
-        self._tasks_dict: Dict[int, TaskExecutor] = {
-            task_config.task_config_id: TaskExecutor(task_config)
-            for task_config
-            in task_configs
-        }
-        for k, v in self._tasks_dict.items():
-            print(k, v)
+    def __init__(self, task_configs: List[TaskConfig] = None):
+        self._tasks_dict: Dict[int, TaskExecutor] = {}
+
+        if task_configs is not None:
+            self.add_tasks(task_configs)
 
     @property
     def task_dict(self) -> Dict[int, TaskExecutor]:
         return self._tasks_dict
+
+    def add_tasks(self, task_configs: List[TaskConfig]):
+        self._tasks_dict.update({
+            task_config.task_config_id: TaskExecutor(task_config)
+            for task_config
+            in task_configs
+        })
 
     def add_task(self, task_config: TaskConfig):
         self._tasks_dict.update({
@@ -79,3 +86,6 @@ class TaskManager:
     def stop_all(self):
         for task_config_id in self._tasks_dict.keys():
             self.stop_task(task_config_id)
+
+
+task_manager = TaskManager()
