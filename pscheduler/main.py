@@ -1,17 +1,24 @@
 import asyncio
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from api.app import server
+from db.connection import Session
 from db.prep import reset_data
 from scheduler.executor import TaskManager
-from scheduler.taskconfig import TaskConfigs
+from scheduler.taskconfig import TaskConfig
 
 
 async def main():
     await reset_data()
-    configs = await TaskConfigs.fetch()
+
+    async with Session() as session:
+        session: AsyncSession
+        configs_rs = await session.execute(select(TaskConfig))
 
     task_manager = TaskManager()
-    task_manager.add_tasks(configs)
+    task_manager.add_tasks(configs_rs.scalars())
     task_manager.run_all()
 
     await server.serve()
