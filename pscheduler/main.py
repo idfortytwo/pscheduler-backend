@@ -1,21 +1,19 @@
 import asyncio
 
-from uvicorn import Config, Server
-
-from api.app import app
+from api.app import server
 from db.prep import reset_data
-from scheduler.executor import task_manager
+from scheduler.executor import TaskManager
 from scheduler.taskconfig import TaskConfigs
 
 
 async def main():
     await reset_data()
     configs = await TaskConfigs.fetch()
+
+    task_manager = TaskManager()
     task_manager.add_tasks(configs)
     task_manager.run_all()
 
-    config = Config(app=app, host='127.0.0.1', port=8000, loop='asyncio')
-    server = Server(config)
     await server.serve()
 
 

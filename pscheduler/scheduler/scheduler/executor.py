@@ -47,10 +47,20 @@ class TaskExecutor:
         return sub.returncode
 
     def __str__(self):
-        return f"TaskExecutor('{self._task_config.command_args}', {self._task_config.trigger_type}, '{self._task_config.trigger_args}')"
+        return f"TaskExecutor('{self._task_config.command_args}', {self._task_config.trigger_type}, " \
+               f"'{self._task_config.trigger_args}')"
 
 
-class TaskManager:
+class SingletonMeta(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class TaskManager(metaclass=SingletonMeta):
     def __init__(self, task_configs: List[TaskConfig] = None):
         self._tasks_dict: Dict[int, TaskExecutor] = {}
 
@@ -86,6 +96,3 @@ class TaskManager:
     def stop_all(self):
         for task_config_id in self._tasks_dict.keys():
             self.stop_task(task_config_id)
-
-
-task_manager = TaskManager()
