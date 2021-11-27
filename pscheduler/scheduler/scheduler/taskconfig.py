@@ -1,24 +1,21 @@
 import ast
 
 from datetime import datetime, timedelta
+from abc import abstractmethod, ABC
 from typing import Iterator
 
 from db.models import TaskConfigModel
 
 
-class TaskConfig(TaskConfigModel):
-    def __init__(self, command_args: str, trigger_args: any, trigger_type: str = None):
+class TaskConfig(TaskConfigModel, ABC):
+    @abstractmethod
+    def __init__(self, command_args: str, schedule_params: any):
         self.command_args = command_args
-        self.trigger_args = trigger_args
+        self.trigger_args = schedule_params
 
-        if trigger_type:
-            if trigger_type in ['cron', 'interval', 'date']:
-                self.trigger_type = trigger_type
-            else:
-                raise NotImplementedError(f'No model supporting trigger type \'{trigger_type}\'')
-
+    @abstractmethod
     def get_next_run_date_it(self) -> Iterator[datetime]:
-        raise NotImplementedError
+        pass
 
     def to_dict(self):
         return {
