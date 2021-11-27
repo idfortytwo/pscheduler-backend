@@ -3,12 +3,13 @@ import typing
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.cors import CORSMiddleware
 from uvicorn import Server, Config
 
 from db.connection import session_scope, Session
 from scheduler.executor import TaskManager
-from scheduler.taskconfig import TaskConfig, TaskConfigFactory
+from scheduler.taskconfig import TaskConfig, TaskConfigFactory, IntervalTaskConfig
 
 app = FastAPI()
 app.add_middleware(
@@ -80,6 +81,8 @@ async def add_task_config(task_config: TaskConfigInputModel):
 
     async with Session() as session:
         session.add(new_task)
+        await session.commit()
+        await session.refresh(new_task)
 
     task_manager.add_task(new_task)
     task_manager.run_all()
