@@ -1,11 +1,14 @@
-from fastapi import FastAPI
+import typing
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from starlette.middleware.cors import CORSMiddleware
 from uvicorn import Server, Config
 
 from db.connection import session_scope, Session
 from scheduler.executor import TaskManager
-from scheduler.taskconfig import TaskConfig
+from scheduler.taskconfig import TaskConfig, TaskConfigFactory
 
 app = FastAPI()
 app.add_middleware(
@@ -60,3 +63,25 @@ async def get_task_config(task_config_id: int):
             return task_config.to_dict()
         else:
             return 'not found'
+
+
+class TaskConfigInputModel(BaseModel):
+    command_args: str
+    trigger_type: str
+    trigger_args: dict
+
+
+@app.post('/task_config', status_code=201)
+async def add_task_config(task_config: TaskConfigInputModel):
+    try:
+        new_task = TaskConfigFactory.create(**task_config.dict())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    async with Session() as session:
+        session.add(new_task)
+
+    task_manager.add_task(new_task)
+    task_manager.run_all()
+
+    return task_config
