@@ -1,14 +1,8 @@
-import abc
-
 from sqlalchemy import Column, Text, Integer, DateTime
 from sqlalchemy.orm import declarative_base, DeclarativeMeta
 
 
-class DeclarativeABCMeta(DeclarativeMeta, abc.ABCMeta):
-    pass
-
-
-Base = declarative_base(metaclass=DeclarativeABCMeta)
+Base = declarative_base(metaclass=DeclarativeMeta)
 
 
 class TaskConfigModel(Base):
@@ -22,8 +16,7 @@ class TaskConfigModel(Base):
     last_run = Column(DateTime)
 
     __mapper_args__ = {
-        'polymorphic_on': trigger_type,
-        'polymorphic_identity': 'task'
+        'polymorphic_on': trigger_type
     }
 
     def __repr__(self):
