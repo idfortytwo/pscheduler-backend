@@ -75,3 +75,18 @@ class DateTaskConfig(TaskConfig):
 
     def get_next_run_date_it(self) -> Iterator[datetime]:
         pass
+
+
+class TaskConfigFactory:
+    _trigger_type_mapping = {
+        'cron': CronTaskConfig,
+        'interval': IntervalTaskConfig,
+        'date': DateTaskConfig
+    }
+
+    @staticmethod
+    def create(command_args: str, trigger_type: str, trigger_args):
+        TaskConfigClass = TaskConfigFactory._trigger_type_mapping.get(trigger_type)
+        if not TaskConfigClass:
+            raise ValueError(f"No such trigger type '{trigger_type}'")
+        return TaskConfigClass(command_args, **trigger_args)
