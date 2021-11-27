@@ -1,15 +1,13 @@
-import typing
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.cors import CORSMiddleware
 from uvicorn import Server, Config
 
 from db.connection import session_scope, Session
 from scheduler.executor import TaskManager
-from scheduler.taskconfig import TaskConfig, TaskConfigFactory, IntervalTaskConfig
+from scheduler.taskconfig import TaskConfig, TaskConfigFactory
+
 
 app = FastAPI()
 app.add_middleware(
