@@ -13,6 +13,10 @@ class TaskExecutor:
         self._next_run_date_it = task_config.get_next_run_date_it()
         self._timer_handle: TimerHandle
 
+    @property
+    def config(self):
+        return self._task_config
+
     def run(self):
         self._timer_handle = self._loop.call_at(self._get_next_run_ts(),
                                                 lambda: asyncio.ensure_future(self._run_iteration()))
@@ -82,6 +86,10 @@ class TaskManager(metaclass=SingletonMeta):
         self._tasks_dict.update({
             task_config.task_config_id: TaskExecutor(task_config)
         })
+
+    def delete_task(self, task_config_id: int):
+        task_to_delete = self._tasks_dict.pop(task_config_id)
+        task_to_delete.stop()
 
     def run_task(self, task_config_id: int):
         self._tasks_dict[task_config_id].run()

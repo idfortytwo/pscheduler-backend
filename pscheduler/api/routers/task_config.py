@@ -62,6 +62,8 @@ async def delete_task_config(task_config_id: int):
         task_to_delete = (await session.execute(select_stmt)).scalar()
 
         if task_to_delete:
+            task_manager.delete_task(task_config_id)
+
             await session.delete(task_to_delete)
             await session.commit()
             return {
