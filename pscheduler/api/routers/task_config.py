@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from api.routers._shared import router, task_manager
+from api.routers._shared import router, task_manager, TaskNotFound
 from db.connection import Session, session_scope
 from scheduler.taskconfig import TaskConfig, TaskConfigFactory
 
@@ -28,7 +28,7 @@ async def get_task_config(task_config_id: int):
         if task_config:
             return task_config.to_dict()
         else:
-            return 'not found'
+            raise TaskNotFound(task_config_id)
 
 
 class TaskConfigInputModel(BaseModel):
@@ -70,4 +70,4 @@ async def delete_task_config(task_config_id: int):
                 'deleted': task_to_delete.to_dict()
             }
         else:
-            raise HTTPException(status_code=404, detail=f"No task config with ID {task_config_id}")
+            raise TaskNotFound(task_config_id)
