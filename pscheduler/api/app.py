@@ -1,3 +1,4 @@
+import sqlalchemy
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -86,3 +87,19 @@ async def add_task_config(task_config: TaskConfigInputModel):
     task_manager.run_all()
 
     return task_config
+
+
+@app.delete('/task_config/{task_config_id}', status_code=200)
+async def delete_task_config(task_config_id: int):
+    async with Session() as session:
+        select_stmt = sqlalchemy.select(TaskConfig).filter(TaskConfig.task_config_id == task_config_id)
+        task_to_delete = (await session.execute(select_stmt)).scalar()
+
+        if task_to_delete:
+            await session.delete(task_to_delete)
+            await session.commit()
+            return {
+                'deleted': task_to_delete.to_dict()
+            }
+        else:
+            raise HTTPException(status_code=404, detail=f"No task config with ID {task_config_id}")
