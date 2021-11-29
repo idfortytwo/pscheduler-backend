@@ -9,8 +9,8 @@ from db.models import TaskModel
 
 class Task(TaskModel, ABC):
     @abstractmethod
-    def __init__(self, command_args: str, schedule_params: any):
-        self.command_args = command_args
+    def __init__(self, command: str, schedule_params: any):
+        self.command = command
         self.trigger_args = schedule_params
 
     @abstractmethod
@@ -24,20 +24,20 @@ class Task(TaskModel, ABC):
     def to_dict(self):
         return {
             'task_id': self.task_id,
-            'command_args': self.command_args,
+            'command': self.command,
             'trigger_type': self.trigger_type,
             'trigger_args': self.trigger_args
         }
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(\'{self.command_args}\', {self.trigger_args})'
+        return f'{self.__class__.__name__}(\'{self.command}\', {self.trigger_args})'
 
 
 class CronTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'cron'}
 
-    def __init__(self, command_args: str, schedule_params: any):
-        super().__init__(command_args, schedule_params)
+    def __init__(self, command: str, schedule_params: any):
+        super().__init__(command, schedule_params)
 
     def get_next_run_date_iter(self) -> Iterator[datetime]:
         pass
@@ -49,7 +49,7 @@ class CronTask(Task):
 class IntervalTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'interval'}
 
-    def __init__(self, command_args: str, /, *,
+    def __init__(self, command: str, /, *,
                  days=0, seconds=0, minutes=0, hours=0, weeks=0):
         kwargs = {
             'days': days,
@@ -59,7 +59,7 @@ class IntervalTask(Task):
             'weeks': weeks
         }
         trigger_args = {k: v for k, v in kwargs.items() if v}
-        super().__init__(command_args, str(trigger_args))
+        super().__init__(command, str(trigger_args))
 
     @property
     def interval(self):
@@ -81,8 +81,8 @@ class IntervalTask(Task):
 class DateTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'date'}
 
-    def __init__(self, command_args: str, date: datetime):
-        super().__init__(command_args, date.isoformat())
+    def __init__(self, command: str, date: datetime):
+        super().__init__(command, date.isoformat())
 
     def get_next_run_date_iter(self) -> Iterator[datetime]:
         pass
@@ -99,8 +99,8 @@ class TaskFactory:
     }
 
     @staticmethod
-    def create(command_args: str, trigger_type: str, trigger_args):
+    def create(command: str, trigger_type: str, trigger_args):
         TaskClass = TaskFactory._trigger_type_mapping.get(trigger_type)
         if not TaskClass:
             raise ValueError(f"No such trigger type '{trigger_type}'")
-        return TaskClass(command_args, **trigger_args)
+        return TaskClass(command, **trigger_args)

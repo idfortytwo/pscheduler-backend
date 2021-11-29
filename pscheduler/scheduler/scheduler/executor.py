@@ -49,7 +49,7 @@ class TaskExecutor:
 
     async def _execute_process(self) -> int:
         sub: asyncio.subprocess.Process = await asyncio.create_subprocess_shell(
-            self._task.command_args,
+            self._task.command,
             stdout=asyncio.subprocess.PIPE,
             shell=True)
 
@@ -65,7 +65,7 @@ class TaskExecutor:
         }
 
     def __str__(self):
-        return f"TaskExecutor('{self._task.command_args}', {self._task.trigger_type}, " \
+        return f"TaskExecutor('{self._task.command}', {self._task.trigger_type}, " \
                f"'{self._task.trigger_args}')"
 
 

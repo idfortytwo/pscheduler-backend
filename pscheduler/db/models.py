@@ -15,7 +15,7 @@ class TaskModel(Base):
     __tablename__ = 'task'
 
     task_id = Column(Integer, primary_key=True, autoincrement=True)
-    command_args = Column(Text, nullable=False)
+    command = Column(Text, nullable=False)
     trigger_type = Column(Text, nullable=False)
     trigger_args = Column(Text, nullable=False)
     starting_date = Column(DateTime)
@@ -27,4 +27,4 @@ class TaskModel(Base):
     }
 
     def __repr__(self):
-        return f'TaskModel({self.task_id}, {self.trigger_type}, {self.command_args}, {self.trigger_args})'
+        return f'TaskModel({self.task_id}, {self.trigger_type}, {self.command}, {self.trigger_args})'
