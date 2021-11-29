@@ -2,7 +2,7 @@ import ast
 
 from datetime import datetime, timedelta
 from abc import abstractmethod, ABC
-from typing import Iterator
+from typing import Iterator, NoReturn
 
 from db.models import TaskConfigModel
 
@@ -14,7 +14,11 @@ class TaskConfig(TaskConfigModel, ABC):
         self.trigger_args = schedule_params
 
     @abstractmethod
-    def get_next_run_date_it(self) -> Iterator[datetime]:
+    def get_next_run_date_iter(self) -> Iterator[datetime]:
+        pass
+
+    @abstractmethod
+    def reset_iter(self) -> NoReturn:
         pass
 
     def to_dict(self):
@@ -35,7 +39,10 @@ class CronTaskConfig(TaskConfig):
     def __init__(self, command_args: str, schedule_params: any):
         super().__init__(command_args, schedule_params)
 
-    def get_next_run_date_it(self) -> Iterator[datetime]:
+    def get_next_run_date_iter(self) -> Iterator[datetime]:
+        pass
+
+    def reset_iter(self) -> NoReturn:
         pass
 
 
@@ -59,7 +66,11 @@ class IntervalTaskConfig(TaskConfig):
         args = ast.literal_eval(self.trigger_args)
         return timedelta(**args)
 
-    def get_next_run_date_it(self) -> Iterator[datetime]:
+    def reset_iter(self):
+        if hasattr(self, 'run_date'):
+            delattr(self, 'run_date')
+
+    def get_next_run_date_iter(self) -> Iterator[datetime]:
         while True:
             if not hasattr(self, 'run_date'):
                 self.run_date = datetime.utcnow() - self.interval
@@ -73,7 +84,10 @@ class DateTaskConfig(TaskConfig):
     def __init__(self, command_args: str, date: datetime):
         super().__init__(command_args, date.isoformat())
 
-    def get_next_run_date_it(self) -> Iterator[datetime]:
+    def get_next_run_date_iter(self) -> Iterator[datetime]:
+        pass
+
+    def reset_iter(self) -> NoReturn:
         pass
 
 

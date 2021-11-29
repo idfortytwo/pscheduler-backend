@@ -10,23 +10,32 @@ class TaskExecutor:
     def __init__(self, task_config: TaskConfig):
         self._task_config = task_config
         self._loop = asyncio.get_event_loop()
-        self._next_run_date_it = task_config.get_next_run_date_it()
         self._timer_handle: TimerHandle
+        self._is_running = False
 
     @property
     def config(self):
         return self._task_config
 
+    @property
+    def is_running(self):
+        return self._is_running
+
     def run(self):
-        self._timer_handle = self._loop.call_at(self._get_next_run_ts(),
-                                                lambda: asyncio.ensure_future(self._run_iteration()))
+        if not self._is_running:
+            self._next_run_date_iter = self._task_config.get_next_run_date_iter()
+            self._timer_handle = self._loop.call_at(self._get_next_run_ts(),
+                                                    lambda: asyncio.ensure_future(self._run_iteration()))
+            self._is_running = True
 
     def stop(self):
+        self._task_config.reset_iter()
         if self._timer_handle:
             self._timer_handle.cancel()
+        self._is_running = False
 
     def _get_next_run_ts(self) -> float:
-        run_date = next(self._next_run_date_it)
+        run_date = next(self._next_run_date_iter)
         loop_base_time = datetime.utcnow() - timedelta(seconds=self._loop.time())
         return (run_date - loop_base_time).total_seconds()
 
