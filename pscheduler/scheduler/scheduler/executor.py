@@ -59,6 +59,12 @@ class TaskExecutor:
 
         return sub.returncode
 
+    def to_dict(self):
+        return {
+            'task_config': self._task_config.to_dict(),
+            'is_running': self.is_running
+        }
+
     def __str__(self):
         return f"TaskExecutor('{self._task_config.command_args}', {self._task_config.trigger_type}, " \
                f"'{self._task_config.trigger_args}')"

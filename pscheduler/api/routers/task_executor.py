@@ -3,11 +3,11 @@ from api.routers._shared import router, task_manager, TaskNotFound
 
 @router.get('/executor')
 async def get_executors():
-    return {
-        k: str(v)
-        for k, v
+    return [
+        executor.to_dict()
+        for task_config_id, executor
         in task_manager.task_dict.items()
-    }
+    ]
 
 
 @router.get('/executor/{task_config_id}')
@@ -23,6 +23,24 @@ async def get_executor(task_config_id: int):
 async def delete_executor(task_config_id: int):
     try:
         task_manager.delete_task(task_config_id)
+        return {'task_config_id': task_config_id}
+    except KeyError:
+        raise TaskNotFound(task_config_id)
+
+
+@router.post('/run_executor/{task_config_id}', status_code=200)
+async def run_executor(task_config_id: int):
+    try:
+        task_manager.run_task(task_config_id)
+        return {'task_config_id': task_config_id}
+    except KeyError:
+        raise TaskNotFound(task_config_id)
+
+
+@router.post('/stop_executor/{task_config_id}', status_code=200)
+async def stop_executor(task_config_id: int):
+    try:
+        task_manager.stop_task(task_config_id)
         return {'task_config_id': task_config_id}
     except KeyError:
         raise TaskNotFound(task_config_id)
