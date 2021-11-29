@@ -7,7 +7,7 @@ from api.app import server
 from db.connection import Session
 from db.prep import reset_data
 from scheduler.executor import TaskManager
-from scheduler.taskconfig import TaskConfig
+from scheduler.task import Task
 
 
 async def main():
@@ -15,10 +15,10 @@ async def main():
 
     async with Session() as session:
         session: AsyncSession
-        configs_rs = await session.execute(select(TaskConfig))
+        tasks_rs = await session.execute(select(Task))
 
     task_manager = TaskManager()
-    task_manager.add_tasks(configs_rs.scalars())
+    task_manager.add_tasks(tasks_rs.scalars())
     task_manager.run_all()
 
     await server.serve()

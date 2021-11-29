@@ -3,19 +3,19 @@ from asyncio import TimerHandle
 from datetime import datetime, timedelta
 from typing import List, Dict
 
-from scheduler.taskconfig import TaskConfig
+from scheduler.task import Task
 
 
 class TaskExecutor:
-    def __init__(self, task_config: TaskConfig):
-        self._task_config = task_config
+    def __init__(self, task: Task):
+        self._task = task
         self._loop = asyncio.get_event_loop()
         self._timer_handle: TimerHandle
         self._is_running = False
 
-    @property
-    def config(self):
-        return self._task_config
+    # @property
+    # def task(self):
+    #     return self._task
 
     @property
     def is_running(self):
@@ -23,13 +23,13 @@ class TaskExecutor:
 
     def run(self):
         if not self._is_running:
-            self._next_run_date_iter = self._task_config.get_next_run_date_iter()
+            self._next_run_date_iter = self._task.get_next_run_date_iter()
             self._timer_handle = self._loop.call_at(self._get_next_run_ts(),
                                                     lambda: asyncio.ensure_future(self._run_iteration()))
             self._is_running = True
 
     def stop(self):
-        self._task_config.reset_iter()
+        self._task.reset_iter()
         if self._timer_handle:
             self._timer_handle.cancel()
         self._is_running = False
@@ -48,9 +48,8 @@ class TaskExecutor:
         print(f'finished with code {return_code}\n')
 
     async def _execute_process(self) -> int:
-        commandargs = self._task_config.command_args
         sub: asyncio.subprocess.Process = await asyncio.create_subprocess_shell(
-            commandargs,
+            self._task.command_args,
             stdout=asyncio.subprocess.PIPE,
             shell=True)
 
@@ -61,13 +60,13 @@ class TaskExecutor:
 
     def to_dict(self):
         return {
-            'task_config': self._task_config.to_dict(),
+            'task': self._task.to_dict(),
             'is_running': self.is_running
         }
 
     def __str__(self):
-        return f"TaskExecutor('{self._task_config.command_args}', {self._task_config.trigger_type}, " \
-               f"'{self._task_config.trigger_args}')"
+        return f"TaskExecutor('{self._task.command_args}', {self._task.trigger_type}, " \
+               f"'{self._task.trigger_args}')"
 
 
 class SingletonMeta(type):
@@ -80,42 +79,42 @@ class SingletonMeta(type):
 
 
 class TaskManager(metaclass=SingletonMeta):
-    def __init__(self, task_configs: List[TaskConfig] = None):
+    def __init__(self, tasks: List[Task] = None):
         self._tasks_dict: Dict[int, TaskExecutor] = {}
 
-        if task_configs is not None:
-            self.add_tasks(task_configs)
+        if tasks is not None:
+            self.add_tasks(tasks)
 
     @property
     def task_dict(self) -> Dict[int, TaskExecutor]:
         return self._tasks_dict
 
-    def add_tasks(self, task_configs: List[TaskConfig]):
+    def add_tasks(self, tasks: List[Task]):
         self._tasks_dict.update({
-            task_config.task_config_id: TaskExecutor(task_config)
-            for task_config
-            in task_configs
+            task.task_id: TaskExecutor(task)
+            for task
+            in tasks
         })
 
-    def add_task(self, task_config: TaskConfig):
+    def add_task(self, task: Task):
         self._tasks_dict.update({
-            task_config.task_config_id: TaskExecutor(task_config)
+            task.task_id: TaskExecutor(task)
         })
 
-    def delete_task(self, task_config_id: int):
-        task_to_delete = self._tasks_dict.pop(task_config_id)
+    def delete_task(self, task_id: int):
+        task_to_delete = self._tasks_dict.pop(task_id)
         task_to_delete.stop()
 
-    def run_task(self, task_config_id: int):
-        self._tasks_dict[task_config_id].run()
+    def run_task(self, task_id: int):
+        self._tasks_dict[task_id].run()
 
     def run_all(self):
-        for task_config_id in self._tasks_dict.keys():
-            self.run_task(task_config_id)
+        for task_id in self._tasks_dict.keys():
+            self.run_task(task_id)
 
-    def stop_task(self, task_config_id: int):
-        self._tasks_dict[task_config_id].stop()
+    def stop_task(self, task_id: int):
+        self._tasks_dict[task_id].stop()
 
     def stop_all(self):
-        for task_config_id in self._tasks_dict.keys():
-            self.stop_task(task_config_id)
+        for task_id in self._tasks_dict.keys():
+            self.stop_task(task_id)

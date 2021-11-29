@@ -4,10 +4,10 @@ from datetime import datetime, timedelta
 from abc import abstractmethod, ABC
 from typing import Iterator, NoReturn
 
-from db.models import TaskConfigModel
+from db.models import TaskModel
 
 
-class TaskConfig(TaskConfigModel, ABC):
+class Task(TaskModel, ABC):
     @abstractmethod
     def __init__(self, command_args: str, schedule_params: any):
         self.command_args = command_args
@@ -23,7 +23,7 @@ class TaskConfig(TaskConfigModel, ABC):
 
     def to_dict(self):
         return {
-            'task_config_id': self.task_config_id,
+            'task_id': self.task_id,
             'command_args': self.command_args,
             'trigger_type': self.trigger_type,
             'trigger_args': self.trigger_args
@@ -33,7 +33,7 @@ class TaskConfig(TaskConfigModel, ABC):
         return f'{self.__class__.__name__}(\'{self.command_args}\', {self.trigger_args})'
 
 
-class CronTaskConfig(TaskConfig):
+class CronTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'cron'}
 
     def __init__(self, command_args: str, schedule_params: any):
@@ -46,7 +46,7 @@ class CronTaskConfig(TaskConfig):
         pass
 
 
-class IntervalTaskConfig(TaskConfig):
+class IntervalTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'interval'}
 
     def __init__(self, command_args: str, /, *,
@@ -78,7 +78,7 @@ class IntervalTaskConfig(TaskConfig):
             yield self.run_date
 
 
-class DateTaskConfig(TaskConfig):
+class DateTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'date'}
 
     def __init__(self, command_args: str, date: datetime):
@@ -91,16 +91,16 @@ class DateTaskConfig(TaskConfig):
         pass
 
 
-class TaskConfigFactory:
+class TaskFactory:
     _trigger_type_mapping = {
-        'cron': CronTaskConfig,
-        'interval': IntervalTaskConfig,
-        'date': DateTaskConfig
+        'cron': CronTask,
+        'interval': IntervalTask,
+        'date': DateTask
     }
 
     @staticmethod
     def create(command_args: str, trigger_type: str, trigger_args):
-        TaskConfigClass = TaskConfigFactory._trigger_type_mapping.get(trigger_type)
-        if not TaskConfigClass:
+        TaskClass = TaskFactory._trigger_type_mapping.get(trigger_type)
+        if not TaskClass:
             raise ValueError(f"No such trigger type '{trigger_type}'")
-        return TaskConfigClass(command_args, **trigger_args)
+        return TaskClass(command_args, **trigger_args)

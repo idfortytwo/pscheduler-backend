@@ -11,10 +11,10 @@ class DeclarativeABCMeta(DeclarativeMeta, abc.ABCMeta):
 Base = declarative_base(metaclass=DeclarativeABCMeta)
 
 
-class TaskConfigModel(Base):
+class TaskModel(Base):
     __tablename__ = 'task'
 
-    task_config_id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, primary_key=True, autoincrement=True)
     command_args = Column(Text, nullable=False)
     trigger_type = Column(Text, nullable=False)
     trigger_args = Column(Text, nullable=False)
@@ -27,4 +27,4 @@ class TaskConfigModel(Base):
     }
 
     def __repr__(self):
-        return f'TaskConfigModel({self.task_config_id}, {self.trigger_type}, {self.command_args}, {self.trigger_args})'
+        return f'TaskModel({self.task_id}, {self.trigger_type}, {self.command_args}, {self.trigger_args})'
