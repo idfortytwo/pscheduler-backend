@@ -13,11 +13,11 @@ from scheduler.task import Task, TaskFactory
 async def get_tasks():
     async with Session() as session:
         tasks = await session.execute(select(Task))
-        return [
+        return {'tasks': [
             task.to_dict()
             for task
             in tasks.scalars()
-        ]
+        ]}
 
 
 @router.get('/task/{task_id}')
@@ -26,7 +26,7 @@ async def get_task_config(task_id: int):
         stmt = select(Task).filter(Task.task_id == task_id)
         task = (await session.execute(stmt)).scalar()
         if task:
-            return task.to_dict()
+            return {'task': task.to_dict()}
         else:
             raise TaskNotFound(task_id)
 
@@ -46,7 +46,7 @@ async def add_task(task: TaskInputModel):
     task_manager.add_task(new_task)
     task_manager.run_all()
 
-    return task
+    return {'task_id': new_task.task_id}
 
 
 @router.delete('/task/{task_id}', status_code=200)
@@ -60,8 +60,6 @@ async def delete_task(task_id: int):
 
             await session.delete(task_to_delete)
             await session.commit()
-            return {
-                'deleted': task_to_delete.to_dict()
-            }
+            return {'task_id': task_id}
         else:
             raise TaskNotFound(task_id)

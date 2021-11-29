@@ -3,11 +3,11 @@ from api.routers._shared import router, task_manager, TaskNotFound
 
 @router.get('/executor')
 async def get_executors():
-    return [
+    return {'task_executors': [
         executor.to_dict()
         for task_id, executor
         in task_manager.task_dict.items()
-    ]
+    ]}
 
 
 @router.get('/executor/{task_id}')
