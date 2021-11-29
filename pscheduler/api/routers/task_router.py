@@ -9,7 +9,7 @@ from db.connection import Session, session_scope
 from scheduler.task import Task, TaskFactory
 
 
-@router.get('/task')
+@router.get('/task', status_code=200)
 async def get_tasks():
     async with Session() as session:
         tasks = await session.execute(select(Task))
@@ -20,7 +20,7 @@ async def get_tasks():
         ]}
 
 
-@router.get('/task/{task_id}')
+@router.get('/task/{task_id}', status_code=200)
 async def get_task_config(task_id: int):
     async with session_scope() as session:
         stmt = select(Task).filter(Task.task_id == task_id)

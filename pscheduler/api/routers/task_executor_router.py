@@ -1,7 +1,7 @@
 from api.routers._shared import router, task_manager, TaskNotFound
 
 
-@router.get('/executor')
+@router.get('/executor', status_code=200)
 async def get_executors():
     return {'task_executors': [
         executor.to_dict()
@@ -10,7 +10,7 @@ async def get_executors():
     ]}
 
 
-@router.get('/executor/{task_id}')
+@router.get('/executor/{task_id}', status_code=200)
 async def get_executor(task_id: int):
     executor = task_manager.task_dict.get(task_id)
     if executor:
