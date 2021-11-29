@@ -1,9 +1,9 @@
 import sqlalchemy
 
 from fastapi import HTTPException
-from pydantic import BaseModel
 from sqlalchemy import select
 
+from api.models import TaskConfigModel
 from api.routers._shared import router, task_manager, TaskNotFound
 from db.connection import Session, session_scope
 from scheduler.taskconfig import TaskConfig, TaskConfigFactory
@@ -31,14 +31,8 @@ async def get_task_config(task_config_id: int):
             raise TaskNotFound(task_config_id)
 
 
-class TaskConfigInputModel(BaseModel):
-    command_args: str
-    trigger_type: str
-    trigger_args: dict
-
-
 @router.post('/task_config', status_code=201)
-async def add_task_config(task_config: TaskConfigInputModel):
+async def add_task_config(task_config: TaskConfigModel):
     try:
         new_task = TaskConfigFactory.create(**task_config.dict())
     except ValueError as e:
