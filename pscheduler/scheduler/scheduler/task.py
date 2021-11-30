@@ -23,10 +23,9 @@ class Task(TaskModel, ABC):
 
     def to_dict(self):
         return {
-            'task_id': self.task_id,
-            'command': self.command,
-            'trigger_type': self.trigger_type,
-            'trigger_args': self.trigger_args
+            k: v
+            for k, v in self.__dict__.items()
+            if k in self.__table__.columns
         }
 
     def __repr__(self):
