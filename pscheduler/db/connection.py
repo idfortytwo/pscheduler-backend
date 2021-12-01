@@ -1,7 +1,14 @@
 from contextlib import asynccontextmanager
-from typing import ContextManager
+from typing import ContextManager, Callable, TypeVar
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker as sqlalchemy_sessionmaker
+
+
+T = TypeVar('T', bound=Callable[[], AsyncSession])
+
+
+def sessionmaker(bind, class_: T) -> T:
+    return sqlalchemy_sessionmaker(bind, class_)
 
 
 engine = create_async_engine('sqlite+aiosqlite:///db.sqlite')
