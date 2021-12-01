@@ -105,6 +105,11 @@ class TaskManager(metaclass=SingletonMeta):
         task_to_delete = self._tasks_dict.pop(task_id)
         task_to_delete.stop()
 
+    def update_task(self, task_id: int, task: Task):
+        self.delete_task(task_id)
+        self.add_task(task)
+        self.run_all()
+
     def run_task(self, task_id: int):
         self._tasks_dict[task_id].run()
 

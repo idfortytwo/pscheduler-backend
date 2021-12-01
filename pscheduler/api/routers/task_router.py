@@ -1,3 +1,5 @@
+from typing import Dict, Any, Literal
+
 import sqlalchemy
 
 from fastapi import HTTPException
@@ -63,3 +65,20 @@ async def delete_task(task_id: int):
             return {'task_id': task_id}
         else:
             raise TaskNotFound(task_id)
+
+
+@router.post('/task/{task_id}', status_code=200)
+async def update_task(task_id: int, updated_task_data: TaskInputModel):
+    async with Session() as session:
+        update_stmt = sqlalchemy.update(Task).filter(Task.task_id == task_id)
+        update_stmt = update_stmt.values(trigger_args=str(updated_task_data.trigger_args))
+        update_stmt = update_stmt.values(command=updated_task_data.command)
+        update_stmt = update_stmt.values(trigger_type=updated_task_data.trigger_type)
+        await session.execute(update_stmt)
+        await session.commit()
+
+        select_stmt = sqlalchemy.select(Task).filter(Task.task_id == task_id)
+        updated_task = (await session.execute(select_stmt)).scalar()
+        task_manager.update_task(task_id, updated_task)
+
+        return {'task_id': task_id}
