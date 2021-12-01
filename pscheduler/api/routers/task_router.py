@@ -36,7 +36,7 @@ async def get_task_config(task_id: int):
 @router.post('/task', status_code=201)
 async def add_task(task: TaskInputModel):
     try:
-        new_task = TaskFactory.create(**task.dict())
+        new_task = TaskFactory.create(task.command, task.trigger_type, task.trigger_args)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -46,7 +46,7 @@ async def add_task(task: TaskInputModel):
         await session.refresh(new_task)
 
     task_manager.add_task(new_task)
-    task_manager.run_all()
+    task_manager.run_task(new_task.task_id)
 
     return {'task_id': new_task.task_id}
 
