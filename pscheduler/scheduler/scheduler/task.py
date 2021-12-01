@@ -60,6 +60,11 @@ class IntervalTask(Task):
         trigger_args = {k: v for k, v in kwargs.items() if v}
         super().__init__(command, str(trigger_args))
 
+    def to_dict(self):
+        _dict = super().to_dict()
+        _dict['trigger_args'] = ast.literal_eval(_dict['trigger_args'])
+        return _dict
+
     @property
     def interval(self):
         args = ast.literal_eval(self.trigger_args)
