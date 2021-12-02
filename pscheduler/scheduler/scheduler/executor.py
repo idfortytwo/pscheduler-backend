@@ -17,9 +17,9 @@ class TaskExecutor:
         self._timer_handle: Union[TimerHandle, None] = None
         self._is_running = False
 
-    # @property
-    # def task(self):
-    #     return self._task
+    @property
+    def task(self):
+        return self._task
 
     @property
     def is_running(self):
@@ -37,9 +37,6 @@ class TaskExecutor:
         if self._timer_handle:
             self._timer_handle.cancel()
         self._is_running = False
-
-    def __del__(self):
-        self.stop()
 
     def _get_next_run_ts(self) -> float:
         run_date = next(self._next_run_date_iter)
@@ -87,13 +84,13 @@ class SingletonMeta(type):
 
 class TaskManager(metaclass=SingletonMeta):
     def __init__(self):
-        self.tasks: Dict[int, TaskExecutor] = {}
+        self.task_executors: Dict[int, TaskExecutor] = {}
         self._loop = asyncio.get_event_loop()
 
     def enable_listening(self, engine):
         sqlalchemy.event.listens_for(engine.sync_engine, 'commit')(self.on_commit)
 
-    def on_commit(self, *args, **kwargs):  # noqa
+    def on_commit(self, conn):  # noqa
         if not self._loop:
             self._loop = asyncio.get_event_loop()
 
@@ -105,31 +102,47 @@ class TaskManager(metaclass=SingletonMeta):
             tasks_rs = await session.execute(select_stmt)
             db_tasks: List[Task] = list(tasks_rs.scalars())
 
-            self._append_db_tasks(db_tasks)
+            self._update_db_tasks(db_tasks)
             self._delete_db_tasks(db_tasks)
 
-    def _append_db_tasks(self, db_tasks: List[Task]):
+    def _update_db_tasks(self, db_tasks: List[Task]):
         for db_task in db_tasks:
-            if db_task.task_id not in self.tasks:
-                self.tasks.update({db_task.task_id: TaskExecutor(db_task)})
+            if db_task.task_id in self.task_executors:
+                current_executor = self.task_executors[db_task.task_id]
+                if db_task != current_executor.task:
+                    self._update_task(current_executor, db_task)
+            else:
+                self._add_task(db_task)
+
+    def _add_task(self, new_task: Task):
+        self.task_executors.update({new_task.task_id: TaskExecutor(new_task)})
+
+    def _update_task(self, current_executor: TaskExecutor, new_task: Task):
+        new_executor = TaskExecutor(new_task)
+        self.task_executors.update({new_task.task_id: new_executor})
+        if current_executor.is_running:
+            new_executor.run()
+
+        current_executor.stop()
+        del current_executor
 
     def _delete_db_tasks(self, db_tasks):
         db_task_ids = set(db_task.task_id for db_task in db_tasks)
-        curr_task_ids = set(self.tasks.keys())
-        redundant_task_ids = curr_task_ids - db_task_ids
-        for task_id in redundant_task_ids:
-            del self.tasks[task_id]
+        curr_task_ids = set(self.task_executors.keys())
+        for task_id in curr_task_ids - db_task_ids:
+            self.task_executors[task_id].stop()
+            del self.task_executors[task_id]
 
     def run_task(self, task_id: int):
-        self.tasks[task_id].run()
+        self.task_executors[task_id].run()
 
     def run_all(self):
-        for task_id in self.tasks.keys():
+        for task_id in self.task_executors.keys():
             self.run_task(task_id)
 
     def stop_task(self, task_id: int):
-        self.tasks[task_id].stop()
+        self.task_executors[task_id].stop()
 
     def stop_all(self):
-        for task_id in self.tasks.keys():
+        for task_id in self.task_executors.keys():
             self.stop_task(task_id)

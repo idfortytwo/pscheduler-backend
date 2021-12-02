@@ -28,6 +28,13 @@ class Task(TaskModel, ABC):
             if k in self.__table__.columns
         }
 
+    def __hash__(self):
+        return hash((self.command, self.trigger_args, self.trigger_type))
+
+    def __eq__(self, other):
+        if isinstance(other, Task):
+            return hash(self) == hash(other)
+
     def __repr__(self):
         return f'{self.__class__.__name__}(\'{self.command}\', {self.trigger_args})'
 

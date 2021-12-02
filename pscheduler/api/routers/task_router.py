@@ -65,15 +65,12 @@ async def delete_task(task_id: int):
 
 @router.post('/task/{task_id}', status_code=200)
 async def update_task(task_id: int, task: TaskInputModel):
-    # async with Session() as session:
-    #     update_stmt = sqlalchemy.update(Task).filter(Task.task_id == task_id)
-    #     update_stmt = update_stmt.values(trigger_args=str(updated_task_data.trigger_args))
-    #     update_stmt = update_stmt.values(command=updated_task_data.command)
-    #     update_stmt = update_stmt.values(trigger_type=updated_task_data.trigger_type)
-    #     await session.execute(update_stmt)
-    #     await session.commit()
-
-    await delete_task(task_id)
-    await add_task(task)
+    async with Session() as session:
+        update_stmt = sqlalchemy.update(Task).filter(Task.task_id == task_id)
+        update_stmt = update_stmt.values(trigger_args=str(task.trigger_args))
+        update_stmt = update_stmt.values(command=task.command)
+        update_stmt = update_stmt.values(trigger_type=task.trigger_type)
+        await session.execute(update_stmt)
+        await session.commit()
 
     return {'task_id': task_id}
