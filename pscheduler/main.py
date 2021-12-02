@@ -3,6 +3,7 @@ import asyncio
 
 from api.app import server
 from db.prep import reset_data
+from db.connection import engine
 from scheduler.executor import TaskManager
 
 
@@ -11,6 +12,7 @@ async def main():
 
     async_task_manager = TaskManager()
     await async_task_manager.sync()
+    async_task_manager.enable_listening(engine)
     async_task_manager.run_all()
 
     await server.serve()

@@ -1,5 +1,6 @@
 import asyncio
 import sqlalchemy
+import sqlalchemy.event
 
 from asyncio import TimerHandle
 from datetime import datetime, timedelta
@@ -87,6 +88,16 @@ class SingletonMeta(type):
 class TaskManager(metaclass=SingletonMeta):
     def __init__(self):
         self.tasks: Dict[int, TaskExecutor] = {}
+        self._loop = asyncio.get_event_loop()
+
+    def enable_listening(self, engine):
+        sqlalchemy.event.listens_for(engine.sync_engine, 'commit')(self.on_commit)
+
+    def on_commit(self, *args, **kwargs):  # noqa
+        if not self._loop:
+            self._loop = asyncio.get_event_loop()
+
+        self._loop.create_task(self.sync())
 
     async def sync(self):
         async with Session() as session:
