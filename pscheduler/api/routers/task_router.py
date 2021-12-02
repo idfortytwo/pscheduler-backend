@@ -1,5 +1,3 @@
-from typing import Dict, Any, Literal
-
 import sqlalchemy
 
 from fastapi import HTTPException
@@ -45,7 +43,7 @@ async def add_task(task: TaskInputModel):
         await session.commit()
         await session.refresh(new_task)
 
-    task_manager.add_task(new_task)
+    await task_manager.sync()
     task_manager.run_task(new_task.task_id)
 
     return {'task_id': new_task.task_id}
@@ -58,27 +56,45 @@ async def delete_task(task_id: int):
         task_to_delete = (await session.execute(select_stmt)).scalar()
 
         if task_to_delete:
-            task_manager.delete_task(task_id)
-
             await session.delete(task_to_delete)
             await session.commit()
-            return {'task_id': task_id}
         else:
             raise TaskNotFound(task_id)
 
+        await task_manager.sync()
+        return {'task_id': task_id}
+
 
 @router.post('/task/{task_id}', status_code=200)
-async def update_task(task_id: int, updated_task_data: TaskInputModel):
+async def update_task(task_id: int, task: TaskInputModel):
     async with Session() as session:
-        update_stmt = sqlalchemy.update(Task).filter(Task.task_id == task_id)
-        update_stmt = update_stmt.values(trigger_args=str(updated_task_data.trigger_args))
-        update_stmt = update_stmt.values(command=updated_task_data.command)
-        update_stmt = update_stmt.values(trigger_type=updated_task_data.trigger_type)
-        await session.execute(update_stmt)
-        await session.commit()
-
         select_stmt = sqlalchemy.select(Task).filter(Task.task_id == task_id)
-        updated_task = (await session.execute(select_stmt)).scalar()
-        task_manager.update_task(task_id, updated_task)
+        task_to_delete = (await session.execute(select_stmt)).scalar()
+        if task_to_delete:
+            await session.delete(task_to_delete)
+            await session.commit()
 
-        return {'task_id': task_id}
+    await task_manager.sync()
+
+    # async with Session() as session:
+    #     update_stmt = sqlalchemy.update(Task).filter(Task.task_id == task_id)
+    #     update_stmt = update_stmt.values(trigger_args=str(updated_task_data.trigger_args))
+    #     update_stmt = update_stmt.values(command=updated_task_data.command)
+    #     update_stmt = update_stmt.values(trigger_type=updated_task_data.trigger_type)
+    #     await session.execute(update_stmt)
+    #     await session.commit()
+
+    try:
+        new_task = TaskFactory.create(task.command, task.trigger_type, task.trigger_args)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    async with Session() as session:
+        session.add(new_task)
+        await session.commit()
+        await session.refresh(new_task)
+
+    await task_manager.sync()
+    task_manager.run_task(new_task.task_id)
+
+    return {'task_id': task_id}
