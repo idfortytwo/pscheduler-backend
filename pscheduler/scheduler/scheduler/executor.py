@@ -16,7 +16,7 @@ class TaskExecutor:
         self._task = task
         self._loop = asyncio.get_event_loop()
         self._timer_handle: Union[TimerHandle, None] = None
-        self._is_running = False
+        self._active = False
 
         self._current_execution: Union[Execution, None] = None
 
@@ -25,20 +25,20 @@ class TaskExecutor:
         return self._task
 
     @property
-    def is_running(self):
-        return self._is_running
+    def active(self):
+        return self._active
 
     def run(self):
-        if not self._is_running:
+        if not self._active:
             self._next_run_date_iter = self._task.get_next_run_date_iter()
             self._timer_handle = self._sched_next_run()
-            self._is_running = True
+            self._active = True
 
     def stop(self):
         self._task.reset_iter()
         if self._timer_handle:
             self._timer_handle.cancel()
-        self._is_running = False
+        self._active = False
 
     def _sched_next_run(self) -> TimerHandle:
         return self._loop.call_at(self._get_next_run_ts(),
@@ -58,7 +58,7 @@ class TaskExecutor:
     def to_dict(self):
         return {
             'task': self._task.to_dict(),
-            'is_running': self.is_running,
+            'active': self.active,
             'status': self.get_status()
         }
 
@@ -163,7 +163,7 @@ class TaskManager(metaclass=SingletonMeta):
     def _update_task(self, current_executor: TaskExecutor, new_task: Task):
         new_executor = TaskExecutor(new_task)
         self.task_executors.update({new_task.task_id: new_executor})
-        if current_executor.is_running:
+        if current_executor.active:
             new_executor.run()
 
         current_executor.stop()
