@@ -1,6 +1,11 @@
-import abc
+from __future__ import annotations
 
-from sqlalchemy import Column, Text, Integer, DateTime
+import abc
+import datetime
+
+from enum import Enum, auto
+
+from sqlalchemy import Column, Text, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, DeclarativeMeta
 
 
@@ -28,3 +33,28 @@ class TaskModel(Base):
 
     def __repr__(self):
         return f'TaskModel({self.task_id}, {self.trigger_type}, {self.command}, {self.trigger_args})'
+
+
+class TaskRunLog(Base):
+    __tablename__ = 'task_run_log'
+
+    task_run_id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, ForeignKey('task.task_id'), nullable=False)
+    status = Column(Text, nullable=False)
+    start_date = Column(DateTime, default=datetime.datetime.utcnow)
+    finish_date = Column(DateTime)
+    return_code = Column(Integer)
+
+    def __init__(self, task_id: int):
+        self.task_id = task_id
+        self.set_state(ExecutionState.AWAITING)
+
+    def set_state(self, state: ExecutionState):
+        self.status = state.name.lower()
+
+
+class ExecutionState(Enum):
+    AWAITING = auto()
+    STARTED = auto()
+    FINISHED = auto()
+    FAILED = auto()

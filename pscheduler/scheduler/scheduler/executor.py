@@ -1,12 +1,13 @@
 import asyncio
-import sqlalchemy
-import sqlalchemy.event
-
 from asyncio import TimerHandle
 from datetime import datetime, timedelta
 from typing import List, Dict, Union
 
+import sqlalchemy
+import sqlalchemy.event
+
 from db.connection import Session
+from db.models import TaskRunLog, ExecutionState
 from scheduler.task import Task
 
 
@@ -16,6 +17,8 @@ class TaskExecutor:
         self._loop = asyncio.get_event_loop()
         self._timer_handle: Union[TimerHandle, None] = None
         self._is_running = False
+
+        self._current_execution: Union[Execution, None] = None
 
     @property
     def task(self):
@@ -28,8 +31,7 @@ class TaskExecutor:
     def run(self):
         if not self._is_running:
             self._next_run_date_iter = self._task.get_next_run_date_iter()
-            self._timer_handle = self._loop.call_at(self._get_next_run_ts(),
-                                                    lambda: asyncio.ensure_future(self._run_iteration()))
+            self._timer_handle = self._sched_next_run()
             self._is_running = True
 
     def stop(self):
@@ -38,18 +40,49 @@ class TaskExecutor:
             self._timer_handle.cancel()
         self._is_running = False
 
+    def _sched_next_run(self) -> TimerHandle:
+        return self._loop.call_at(self._get_next_run_ts(),
+                                  lambda: asyncio.ensure_future(self._run_iteration()))
+
     def _get_next_run_ts(self) -> float:
         run_date = next(self._next_run_date_iter)
         loop_base_time = datetime.utcnow() - timedelta(seconds=self._loop.time())
         return (run_date - loop_base_time).total_seconds()
 
     async def _run_iteration(self):
-        self._timer_handle = self._loop.call_at(self._get_next_run_ts(),
-                                                lambda: asyncio.ensure_future(self._run_iteration()))
+        self._timer_handle = self._sched_next_run()
 
-        print(f'running at {datetime.utcnow()}')
+        self._current_execution = Execution(self.task)
+        await self._current_execution.start()
+
+    def to_dict(self):
+        return {
+            'task': self._task.to_dict(),
+            'is_running': self.is_running,
+            'status': self.get_status()
+        }
+
+    def get_status(self):
+        if self._current_execution:
+            return self._current_execution.status
+        else:
+            return ExecutionState.AWAITING.name.lower()
+
+    def __str__(self):
+        return f"TaskExecutor('{self._task.command}', {self._task.trigger_type}, " \
+               f"'{self._task.trigger_args}')"
+
+
+class Execution:
+    def __init__(self, task: Task):
+        self._task = task
+        self.log = TaskRunLog(self._task.task_id)
+
+    async def start(self):
+        self._log_start()
+
         return_code = await self._execute_process()
-        print(f'finished with code {return_code}\n')
+        return return_code
 
     async def _execute_process(self) -> int:
         sub: asyncio.subprocess.Process = await asyncio.create_subprocess_shell(
@@ -60,17 +93,27 @@ class TaskExecutor:
         while line := await sub.stdout.readline():
             print(line.decode(), end='')
 
+        self._log_finish()
+
         return sub.returncode
 
-    def to_dict(self):
-        return {
-            'task': self._task.to_dict(),
-            'is_running': self.is_running
-        }
+    def _log_start(self):
+        async with Session(expire_on_commit=False) as session:
+            self.log = TaskRunLog(self._task.task_id)
+            self.log.set_state(ExecutionState.STARTED)
+            session.add(self.log)
+            await session.commit()
 
-    def __str__(self):
-        return f"TaskExecutor('{self._task.command}', {self._task.trigger_type}, " \
-               f"'{self._task.trigger_args}')"
+    def _log_finish(self):
+        async with Session(expire_on_commit=False) as session:
+            self.log.set_state(ExecutionState.FINISHED)
+            self.log.finish_date = datetime.utcnow()
+            session.add(self.log)
+            await session.commit()
+
+    @property
+    def status(self):
+        return self.log.status
 
 
 class SingletonMeta(type):
