@@ -18,7 +18,7 @@ class TaskExecutor:
         self._timer_handle: Union[TimerHandle, None] = None
         self._active = False
 
-        self.status = 'Not running'
+        self.status = 'never launched'
 
     @property
     def task(self):

@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 
 from api.models import TaskInputModel
-from api.routers._shared import router, task_manager, TaskNotFound
+from api.routers._shared import router, TaskNotFound
 from db.connection import Session, session_scope
 from scheduler.task import Task, TaskFactory
 
@@ -42,8 +42,6 @@ async def add_task(task: TaskInputModel):
         session.add(new_task)
         await session.commit()
         await session.refresh(new_task)
-
-    task_manager.run_task(new_task.task_id)
 
     return {'task_id': new_task.task_id}
 
