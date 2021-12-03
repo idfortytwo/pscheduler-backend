@@ -1,7 +1,7 @@
 import asyncio
 from asyncio import TimerHandle
 from datetime import datetime, timedelta
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Callable
 
 import sqlalchemy
 import sqlalchemy.event
@@ -18,7 +18,7 @@ class TaskExecutor:
         self._timer_handle: Union[TimerHandle, None] = None
         self._active = False
 
-        self._current_execution: Union[Execution, None] = None
+        self.status = 'Not running'
 
     @property
     def task(self):
@@ -52,21 +52,18 @@ class TaskExecutor:
     async def _run_iteration(self):
         self._timer_handle = self._sched_next_run()
 
-        self._current_execution = Execution(self.task)
+        self._current_execution = Execution(self.task, status_callback=self.update_status)
         await self._current_execution.start()
+
+    def update_status(self, status):
+        self.status = status
 
     def to_dict(self):
         return {
             'task': self._task.to_dict(),
             'active': self.active,
-            'status': self.get_status()
+            'status': self.status
         }
-
-    def get_status(self):
-        if self._current_execution:
-            return self._current_execution.status
-        else:
-            return ExecutionState.AWAITING.name.lower()
 
     def __str__(self):
         return f"TaskExecutor('{self._task.command}', {self._task.trigger_type}, " \
@@ -74,8 +71,9 @@ class TaskExecutor:
 
 
 class Execution:
-    def __init__(self, task: Task):
+    def __init__(self, task: Task, status_callback: Callable):
         self._task = task
+        self._status_callback = status_callback
         self.log = TaskRunLog(self._task.task_id)
 
     async def start(self):
@@ -101,13 +99,17 @@ class Execution:
         async with Session(expire_on_commit=False) as session:
             self.log = TaskRunLog(self._task.task_id)
             self.log.set_state(ExecutionState.STARTED)
+            self._status_callback(self.log.status)
+
             session.add(self.log)
             await session.commit()
 
     async def _log_finish(self):
         async with Session(expire_on_commit=False) as session:
             self.log.set_state(ExecutionState.FINISHED)
+            self._status_callback(self.log.status)
             self.log.finish_date = datetime.utcnow()
+
             session.add(self.log)
             await session.commit()
 
