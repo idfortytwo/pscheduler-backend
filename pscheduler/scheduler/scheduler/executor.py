@@ -79,7 +79,7 @@ class Execution:
         self.log = TaskRunLog(self._task.task_id)
 
     async def start(self):
-        self._log_start()
+        await self._log_start()
 
         return_code = await self._execute_process()
         return return_code
@@ -93,18 +93,18 @@ class Execution:
         while line := await sub.stdout.readline():
             print(line.decode(), end='')
 
-        self._log_finish()
+        await self._log_finish()
 
         return sub.returncode
 
-    def _log_start(self):
+    async def _log_start(self):
         async with Session(expire_on_commit=False) as session:
             self.log = TaskRunLog(self._task.task_id)
             self.log.set_state(ExecutionState.STARTED)
             session.add(self.log)
             await session.commit()
 
-    def _log_finish(self):
+    async def _log_finish(self):
         async with Session(expire_on_commit=False) as session:
             self.log.set_state(ExecutionState.FINISHED)
             self.log.finish_date = datetime.utcnow()
