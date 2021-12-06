@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker as sqlalchemy_sessionmaker, Session as NormalSession
 
 
-T = TypeVar('T', bound=Callable[[], Union[NormalSession, AsyncSession]])
+T = TypeVar('T', bound=Callable[[], Union[AsyncSession, NormalSession]])
 
 
 def sessionmaker(bind, class_: T) -> T:
