@@ -35,10 +35,10 @@ class TaskModel(Base):
         return f'TaskModel({self.task_id}, {self.trigger_type}, {self.command}, {self.trigger_args})'
 
 
-class TaskRunLog(Base):
-    __tablename__ = 'task_run_log'
+class ExecutionLog(Base):
+    __tablename__ = 'execution_log'
 
-    task_run_id = Column(Integer, primary_key=True, autoincrement=True)
+    execution_log_id = Column(Integer, primary_key=True, autoincrement=True)
     task_id = Column(Integer, ForeignKey('task.task_id'), nullable=False)
     status = Column(Text, nullable=False)
     start_date = Column(DateTime, default=datetime.datetime.utcnow)
@@ -64,11 +64,11 @@ class TaskOutputLog(Base):
     __tablename__ = 'task_output_log'
 
     task_output_log_id = Column(Integer, primary_key=True, autoincrement=True)
-    task_run_id = Column(Integer, ForeignKey('task_run_log.task_run_id'), nullable=False)
+    execution_log_id = Column(Integer, ForeignKey('execution_log.execution_log_id'), nullable=False)
     value = Column(Text, nullable=False)
     date = Column(DateTime, nullable=False)
 
     def __init__(self, value: str, date: datetime.datetime, task_run_id: int):
         self.value = value
         self.date = date
-        self.task_run_id = task_run_id
+        self.execution_log_id = task_run_id

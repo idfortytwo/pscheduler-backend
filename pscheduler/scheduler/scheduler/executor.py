@@ -7,7 +7,7 @@ import sqlalchemy
 import sqlalchemy.event
 
 from db.connection import Session
-from db.models import TaskRunLog, ExecutionState, TaskOutputLog
+from db.models import ExecutionLog, ExecutionState, TaskOutputLog
 from scheduler.task import Task
 from util import SingletonMeta, logger
 
@@ -75,7 +75,7 @@ class Execution:
     def __init__(self, task: Task, status_callback: Callable):
         self._task = task
         self._status_callback = status_callback
-        self.log = TaskRunLog(self._task.task_id)
+        self.log = ExecutionLog(self._task.task_id)
 
     async def start(self):
         await self._log_start()
@@ -91,7 +91,7 @@ class Execution:
 
         while line := await sub.stdout.readline():
             print(line.decode(), end='')
-            line_log = TaskOutputLog(line.decode().rstrip(), datetime.utcnow(), self.log.task_run_id)
+            line_log = TaskOutputLog(line.decode().rstrip(), datetime.utcnow(), self.log.execution_log_id)
             logger.log(line_log)
 
         await self._log_finish()
@@ -100,7 +100,7 @@ class Execution:
 
     async def _log_start(self):
         async with Session(expire_on_commit=False) as session:
-            self.log = TaskRunLog(self._task.task_id)
+            self.log = ExecutionLog(self._task.task_id)
             self.log.set_state(ExecutionState.STARTED)
             self._status_callback(self.log.status)
 
