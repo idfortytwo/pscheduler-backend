@@ -58,3 +58,17 @@ class ExecutionState(Enum):
     STARTED = auto()
     FINISHED = auto()
     FAILED = auto()
+
+
+class TaskOutputLog(Base):
+    __tablename__ = 'task_output_log'
+
+    task_output_log_id = Column(Integer, primary_key=True, autoincrement=True)
+    task_run_id = Column(Integer, ForeignKey('task_run_log.task_run_id'), nullable=False)
+    value = Column(Text, nullable=False)
+    date = Column(DateTime, nullable=False)
+
+    def __init__(self, value: str, date: datetime.datetime, task_run_id: int):
+        self.value = value
+        self.date = date
+        self.task_run_id = task_run_id

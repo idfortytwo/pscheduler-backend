@@ -7,8 +7,9 @@ import sqlalchemy
 import sqlalchemy.event
 
 from db.connection import Session
-from db.models import TaskRunLog, ExecutionState
+from db.models import TaskRunLog, ExecutionState, TaskOutputLog
 from scheduler.task import Task
+from util import SingletonMeta, logger
 
 
 class TaskExecutor:
@@ -90,6 +91,8 @@ class Execution:
 
         while line := await sub.stdout.readline():
             print(line.decode(), end='')
+            line_log = TaskOutputLog(line.decode().rstrip(), datetime.utcnow(), self.log.task_run_id)
+            logger.log(line_log)
 
         await self._log_finish()
 
@@ -116,15 +119,6 @@ class Execution:
     @property
     def status(self):
         return self.log.status
-
-
-class SingletonMeta(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super().__call__(*args, **kwargs)
-        return cls._instances[cls]
 
 
 class TaskManager(metaclass=SingletonMeta):
