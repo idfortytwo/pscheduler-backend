@@ -52,6 +52,14 @@ class ExecutionLog(Base):
     def set_state(self, state: ExecutionState):
         self.status = state.name.lower()
 
+    def to_dict(self):
+        return {
+            k: v
+            for k, v
+            in self.__dict__.items()
+            if k in self.__table__.columns
+        }
+
 
 class ExecutionState(Enum):
     AWAITING = auto()
