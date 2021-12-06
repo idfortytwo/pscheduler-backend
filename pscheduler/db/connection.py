@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
-from typing import ContextManager, Callable, TypeVar
+from typing import ContextManager, Callable, TypeVar, Union
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker as sqlalchemy_sessionmaker
+from sqlalchemy.orm import sessionmaker as sqlalchemy_sessionmaker, Session as NormalSession
 
 
-T = TypeVar('T', bound=Callable[[], AsyncSession])
+T = TypeVar('T', bound=Callable[[], Union[NormalSession, AsyncSession]])
 
 
 def sessionmaker(bind, class_: T) -> T:
