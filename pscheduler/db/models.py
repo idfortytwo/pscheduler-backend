@@ -73,10 +73,10 @@ class TaskOutputLog(Base):
 
     task_output_log_id = Column(Integer, primary_key=True, autoincrement=True)
     execution_log_id = Column(Integer, ForeignKey('execution_log.execution_log_id'), nullable=False)
-    value = Column(Text, nullable=False)
-    date = Column(DateTime, nullable=False)
+    message = Column(Text, nullable=False)
+    time = Column(DateTime, nullable=False)
 
-    def __init__(self, value: str, date: datetime.datetime, task_run_id: int):
-        self.value = value
-        self.date = date
+    def __init__(self, message: str, time: datetime.datetime, task_run_id: int):
         self.execution_log_id = task_run_id
+        self.message = message
+        self.time = time
