@@ -5,7 +5,7 @@ import datetime
 
 from enum import Enum, auto
 
-from sqlalchemy import Column, Text, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, Text, Integer, DateTime, ForeignKey, Index
 from sqlalchemy.orm import declarative_base, DeclarativeMeta
 
 
@@ -75,6 +75,10 @@ class ExecutionOutputLog(Base):
     execution_log_id = Column(Integer, ForeignKey('execution_log.execution_log_id'), nullable=False)
     message = Column(Text, nullable=False)
     time = Column(DateTime, nullable=False)
+
+    __table_args__ = (
+        Index('ids_index', 'execution_output_log_id', 'execution_log_id', unique=True),
+    )
 
     def __init__(self, message: str, time: datetime.datetime, task_run_id: int):
         self.execution_log_id = task_run_id
