@@ -68,10 +68,10 @@ class ExecutionState(Enum):
     FAILED = auto()
 
 
-class TaskOutputLog(Base):
-    __tablename__ = 'task_output_log'
+class ExecutionOutputLog(Base):
+    __tablename__ = 'execution_output_log'
 
-    task_output_log_id = Column(Integer, primary_key=True, autoincrement=True)
+    execution_output_log_id = Column(Integer, primary_key=True, autoincrement=True)
     execution_log_id = Column(Integer, ForeignKey('execution_log.execution_log_id'), nullable=False)
     message = Column(Text, nullable=False)
     time = Column(DateTime, nullable=False)
@@ -80,3 +80,11 @@ class TaskOutputLog(Base):
         self.execution_log_id = task_run_id
         self.message = message
         self.time = time
+
+    def to_dict(self):
+        return {
+            k: v
+            for k, v
+            in self.__dict__.items()
+            if k in self.__table__.columns
+        }
