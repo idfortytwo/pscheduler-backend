@@ -45,8 +45,10 @@ class ExecutionLog(Base):
     finish_date = Column(DateTime)
     return_code = Column(Integer)
 
-    def __init__(self, task_id: int):
+    def __init__(self, task_id: int, start_date: datetime.datetime = None):
         self.task_id = task_id
+        if start_date:
+            self.start_date = start_date
         self.set_state(ExecutionState.AWAITING)
 
     def set_state(self, state: ExecutionState):
@@ -66,6 +68,7 @@ class ExecutionState(Enum):
     STARTED = auto()
     FINISHED = auto()
     FAILED = auto()
+    MISSED = auto()
 
 
 class ExecutionOutputLog(Base):

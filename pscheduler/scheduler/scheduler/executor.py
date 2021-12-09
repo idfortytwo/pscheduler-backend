@@ -45,10 +45,27 @@ class TaskExecutor:
         return self._loop.call_at(self._get_next_run_ts(),
                                   lambda: asyncio.ensure_future(self._run_iteration()))
 
+    def _log_missed(self, run_date: datetime):
+        missed_log = ExecutionLog(self._task.task_id, start_date=run_date)
+        missed_log.set_state(ExecutionState.MISSED)
+        logger.log(missed_log)
+
     def _get_next_run_ts(self) -> float:
-        run_date = next(self._next_run_date_iter)
         loop_base_time = datetime.utcnow() - timedelta(seconds=self._loop.time())
-        return (run_date - loop_base_time).total_seconds()
+        now_ts = (datetime.utcnow() - loop_base_time).total_seconds()
+
+        run_date = next(self._next_run_date_iter)
+
+        missed = False
+        while (next_run_ts := (run_date - loop_base_time).total_seconds()) - now_ts < 0:
+            missed = True
+            self._log_missed(run_date)
+            run_date = next(self._next_run_date_iter)
+
+        if missed:
+            self._log_missed(run_date)
+
+        return next_run_ts
 
     async def _run_iteration(self):
         self._timer_handle = self._sched_next_run()
