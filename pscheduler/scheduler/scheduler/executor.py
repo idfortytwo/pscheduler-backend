@@ -7,7 +7,7 @@ import sqlalchemy
 import sqlalchemy.event
 
 from db.connection import Session
-from db.models import ExecutionLog, ExecutionState, TaskOutputLog
+from db.models import ExecutionLog, ExecutionState, ExecutionOutputLog
 from scheduler.task import Task
 from util import SingletonMeta, logger
 
@@ -91,7 +91,7 @@ class Execution:
 
         while line := await sub.stdout.readline():
             print(line.decode(), end='')
-            line_log = TaskOutputLog(line.decode().rstrip(), datetime.utcnow(), self.log.execution_log_id)
+            line_log = ExecutionOutputLog(line.decode(), datetime.utcnow(), self.log.execution_log_id)
             logger.log(line_log)
 
         await self._log_finish()
