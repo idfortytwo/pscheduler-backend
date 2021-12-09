@@ -10,11 +10,6 @@ from db.models import ExecutionOutputLog
 @router.get('/execution/output/{execution_log_id}', status_code=200)
 async def get_execution_output_log(execution_log_id: int, last_execution_output_log_id: Optional[int] = None):
     async with Session() as session:
-        from typing import Union
-        from sqlalchemy.ext.asyncio import AsyncSession
-        from sqlalchemy.orm import Session as NormalSession
-        session: Union[NormalSession, AsyncSession]
-
         select_stmt = select(ExecutionOutputLog)
         select_stmt = select_stmt.filter(ExecutionOutputLog.execution_log_id == execution_log_id)
         if last_execution_output_log_id:
