@@ -53,6 +53,15 @@ class ExecutionLog(Base):
 
     def set_state(self, state: ExecutionState):
         self.status = state.name.lower()
+        self.state = state
+
+    @property
+    def state(self) -> ExecutionState:
+        return getattr(ExecutionState, self.status.upper())
+
+    @state.setter
+    def state(self, state: ExecutionState):
+        self._state = state
 
     def to_dict(self):
         return {
