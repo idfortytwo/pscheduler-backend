@@ -24,6 +24,6 @@ class TaskOutputLogger(metaclass=SingletonMeta):
 
     async def flush(self):
         async with Session() as session:
-            logs = [self._buffer.pop() for _ in range(len(self._buffer))]
+            logs = [self._buffer.popleft() for _ in range(len(self._buffer))]
             session.add_all(logs)
             await session.commit()
