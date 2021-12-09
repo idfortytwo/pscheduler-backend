@@ -20,10 +20,12 @@ async def get_execution_output_log(execution_log_id: int, last_execution_output_
             last_execution_output_log_id = execution_output_logs[-1].execution_output_log_id
 
         status = None
+        return_code = None
         if not execution_output_logs:
             exec_log_stmt = select(ExecutionLog).filter(ExecutionLog.execution_log_id == execution_log_id)
             execution_log: ExecutionLog = await session.scalar(exec_log_stmt)
             status = execution_log.status
+            return_code = execution_log.return_code
 
         return {
             'execution_output_logs': [
@@ -32,5 +34,6 @@ async def get_execution_output_log(execution_log_id: int, last_execution_output_
                 in execution_output_logs
             ],
             'last_execution_output_log_id': last_execution_output_log_id,
-            'status': status
+            'status': status,
+            'return_code': return_code
         }
