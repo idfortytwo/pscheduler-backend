@@ -10,7 +10,6 @@ from db.dal import DAL, get_dal
 async def get_execution_output_logs(execution_log_id: int, last_execution_output_log_id: Optional[int] = None,
                                     db: DAL = Depends(get_dal)):
     execution_output_logs = await db.get_execution_output_logs(execution_log_id, last_execution_output_log_id)
-    print(execution_output_logs)
     if execution_output_logs:
         last_execution_output_log_id = execution_output_logs[-1].execution_output_log_id
 
