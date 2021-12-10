@@ -1,39 +1,33 @@
-from typing import List, Optional
+from typing import Optional
 
-from sqlalchemy import select
+from fastapi import Depends
 
 from api.routers._shared import router
-from db.connection import Session
-from db.models import ExecutionOutputLog, ExecutionLog
+from db.dal import DAL, get_dal
 
 
 @router.get('/execution/output/{execution_log_id}', status_code=200)
-async def get_execution_output_log(execution_log_id: int, last_execution_output_log_id: Optional[int] = None):
-    async with Session() as session:
-        select_stmt = select(ExecutionOutputLog)
-        select_stmt = select_stmt.filter(ExecutionOutputLog.execution_log_id == execution_log_id)
-        if last_execution_output_log_id:
-            select_stmt = select_stmt.filter(ExecutionOutputLog.execution_output_log_id > last_execution_output_log_id)
+async def get_execution_output_logs(execution_log_id: int, last_execution_output_log_id: Optional[int] = None,
+                                    db: DAL = Depends(get_dal)):
+    execution_output_logs = await db.get_execution_output_logs(execution_log_id, last_execution_output_log_id)
+    print(execution_output_logs)
+    if execution_output_logs:
+        last_execution_output_log_id = execution_output_logs[-1].execution_output_log_id
 
-        execution_output_logs: List[ExecutionOutputLog] = list(await session.scalars(select_stmt))
-        if execution_output_logs:
-            last_execution_output_log_id = execution_output_logs[-1].execution_output_log_id
+    status = None
+    return_code = None
+    if not execution_output_logs:
+        execution_log = await db.get_execution_log(execution_log_id)
+        status = execution_log.status
+        return_code = execution_log.return_code
 
-        status = None
-        return_code = None
-        if not execution_output_logs:
-            exec_log_stmt = select(ExecutionLog).filter(ExecutionLog.execution_log_id == execution_log_id)
-            execution_log: ExecutionLog = await session.scalar(exec_log_stmt)
-            status = execution_log.status
-            return_code = execution_log.return_code
-
-        return {
-            'execution_output_logs': [
-                log.to_dict()
-                for log
-                in execution_output_logs
-            ],
-            'last_execution_output_log_id': last_execution_output_log_id,
-            'status': status,
-            'return_code': return_code
-        }
+    return {
+        'execution_output_logs': [
+            log.to_dict()
+            for log
+            in execution_output_logs
+        ],
+        'last_execution_output_log_id': last_execution_output_log_id,
+        'status': status,
+        'return_code': return_code
+    }
