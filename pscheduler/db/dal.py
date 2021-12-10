@@ -31,7 +31,6 @@ class DAL:
         self.session.add(new_task)
 
         await self.session.commit()
-        await self.session.refresh(new_task)
         return new_task
 
     async def delete_task(self, task_id: int):
@@ -77,6 +76,6 @@ class DAL:
 
 
 async def get_dal():
-    async with Session() as session:
+    async with Session(expire_on_commit=False) as session:
         async with session.begin():
             yield DAL(session)
