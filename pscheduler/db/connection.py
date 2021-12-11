@@ -11,8 +11,12 @@ def sessionmaker(bind, class_: T) -> T:
     return sqlalchemy_sessionmaker(bind, class_)
 
 
-engine = create_async_engine('sqlite+aiosqlite:///db.sqlite')
-Session = sessionmaker(bind=engine, class_=AsyncSession)
+conn_str = 'sqlite+aiosqlite:///db.sqlite'
+engine = create_async_engine(conn_str)
+
+
+def Session(*args, **kwargs):
+    return AsyncSession(bind=engine, *args, **kwargs)
 
 
 @asynccontextmanager
