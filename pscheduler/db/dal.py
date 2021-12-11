@@ -6,12 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.models import TaskInputModel
 from db.connection import Session
 from db.models import ExecutionLog, ExecutionOutputLog
+from scheduler.executor import ExecutionManager
 from scheduler.task import Task, TaskFactory
 
 
 class DAL:
-    def __init__(self, db_session: AsyncSession):
+    def __init__(self, db_session: AsyncSession, execution_manager: ExecutionManager):
         self.session = db_session
+        self.execution_manager = execution_manager
 
     async def get_tasks(self) -> List[Task]:
         rs = await self.session.execute(
@@ -31,6 +33,7 @@ class DAL:
         self.session.add(new_task)
 
         await self.session.commit()
+        await self.execution_manager.sync()
         return new_task
 
     async def delete_task(self, task_id: int):
@@ -39,6 +42,7 @@ class DAL:
             filter(Task.task_id == task_id)
         )
         await self.session.commit()
+        await self.execution_manager.sync()
 
     async def update_task(self, task_id: int, task: TaskInputModel):
         await self.session.execute(
@@ -51,6 +55,7 @@ class DAL:
             )
         )
         await self.session.commit()
+        await self.execution_manager.sync()
 
     async def get_execution_logs(self) -> List[ExecutionLog]:
         rs = await self.session.execute(
@@ -78,4 +83,4 @@ class DAL:
 async def get_dal():
     async with Session(expire_on_commit=False) as session:
         async with session.begin():
-            yield DAL(session)
+            yield DAL(session, ExecutionManager())
