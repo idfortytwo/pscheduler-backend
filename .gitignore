@@ -5,3 +5,4 @@ db.sqlite
 __pycache__
 plantuml.jar
 diagram.png
+test_db.sqlite
