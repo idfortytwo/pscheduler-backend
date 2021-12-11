@@ -1,18 +1,15 @@
 import asyncio
 
-
 from api.app import server
 from db.prep import reset_data
-from db.connection import engine
-from scheduler.executor import TaskManager
+from scheduler.executor import ExecutionManager
 
 
 async def main():
     await reset_data()
 
-    async_task_manager = TaskManager()
+    async_task_manager = ExecutionManager()
     await async_task_manager.sync()
-    async_task_manager.enable_listening(engine)
     async_task_manager.run_all()
 
     await server.serve()

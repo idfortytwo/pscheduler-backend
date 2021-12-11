@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
 
-from scheduler.executor import TaskManager
+from scheduler.executor import ExecutionManager
 
 
 router = APIRouter()
-task_manager = TaskManager()
+execution_manager = ExecutionManager()
 
 
 def TaskNotFound(task_id: int):

@@ -1,7 +1,7 @@
 from fastapi import HTTPException, Depends
 
 from api.models import TaskInputModel
-from api.routers._shared import router, TaskNotFound
+from api.routers._shared import router, TaskNotFound, execution_manager
 from db.dal import DAL, get_dal
 
 
@@ -28,6 +28,7 @@ async def get_task(task_id: int, db: DAL = Depends(get_dal)):
 async def add_task(task: TaskInputModel, db: DAL = Depends(get_dal)):
     try:
         new_task = await db.add_task(task)
+        await execution_manager.sync()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -37,8 +38,10 @@ async def add_task(task: TaskInputModel, db: DAL = Depends(get_dal)):
 @router.delete('/task/{task_id}', status_code=200)
 async def delete_task(task_id: int, db: DAL = Depends(get_dal)):
     await db.delete_task(task_id)
+    await execution_manager.sync()
 
 
 @router.post('/task/{task_id}', status_code=200)
 async def update_task(task_id: int, task: TaskInputModel, db: DAL = Depends(get_dal)):
     await db.update_task(task_id, task)
+    await execution_manager.sync()
