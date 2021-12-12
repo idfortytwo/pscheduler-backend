@@ -84,7 +84,7 @@ class IntervalTask(Task):
     def get_next_run_date_iter(self) -> Iterator[datetime]:
         while True:
             if not hasattr(self, 'run_date'):
-                self.run_date = datetime.utcnow() - self.interval
+                self.run_date = datetime.utcnow()
             self.run_date += self.interval
             yield self.run_date
 
