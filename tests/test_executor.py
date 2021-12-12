@@ -82,7 +82,7 @@ class TestExecution:
         executor = execution_manager.task_executors[1]
         assert executor.task == IntervalTask('echo 0.25s', seconds=0.25)
 
-        await asyncio.sleep(0.4)
+        await asyncio.sleep(0.3)
         await logger.flush()
 
         exec_out_logs = (await session.scalars(select(ExecutionOutputLog))).all()
@@ -107,12 +107,12 @@ class TestExecution:
 
     async def test_stop(self, event_loop, session, add_one_task, execution_manager):
         client.post('/run_executor/1')
-        await asyncio.sleep(0.6)
+        await asyncio.sleep(0.3)
 
         client.post('/stop_executor/1')
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(0.3)
 
         await logger.flush()
         exec_logs = (await session.scalars(select(ExecutionLog))).all()
-        assert len(exec_logs) == 2
+        assert len(exec_logs) == 1
         assert all(log.status == 'finished' for log in exec_logs)
