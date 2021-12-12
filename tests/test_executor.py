@@ -1,11 +1,12 @@
 import asyncio
+import json
 
 import pytest
 from sqlalchemy import select
 from db.models import ExecutionLog, ExecutionOutputLog
 from scheduler.executor import ExecutionManager
-from scheduler.task import IntervalTask
-from tests.testing import event_loop, client, session, add_one_task, setup_db  # noqa
+from scheduler.task import IntervalTask, Task
+from tests.testing import event_loop, client, session, add_one_task, add_three_tasks, setup_db  # noqa
 from util import TaskOutputLogger
 
 
@@ -116,3 +117,18 @@ class TestExecution:
         exec_logs = (await session.scalars(select(ExecutionLog))).all()
         assert len(exec_logs) == 1
         assert all(log.status == 'finished' for log in exec_logs)
+
+    async def test_get_all(self, event_loop, session, add_three_tasks, execution_manager):
+        resp = client.get('/executor')
+
+        tasks = (await session.scalars(select(Task))).all()
+        assert json.loads(resp.content) == {
+            'task_executors': [
+                {
+                    'task': task.to_dict(),
+                    'active': False,
+                    'status': 'never launched'
+                }
+                for task in tasks
+            ]
+        }
