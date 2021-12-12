@@ -48,7 +48,7 @@ class TestExecutorManager:
 
     async def test_update(self, session, add_one_task, execution_manager):
         old_task = execution_manager.task_executors[1].task
-        assert old_task == IntervalTask('echo 1s', seconds=1)
+        assert old_task == IntervalTask('echo 0.25s', seconds=0.25)
 
         client.post(
             '/task/1',
@@ -66,18 +66,18 @@ class TestExecutorManager:
 
 
 class TestExecution:
-    async def test_never_launched(self, setup_db, session, add_one_task, execution_manager):
+    async def test_never_launched(self, session, add_one_task, execution_manager):
         executor = execution_manager.task_executors[1]
 
         exec_logs = (await session.scalars(select(ExecutionLog))).all()
         assert not executor.active and executor.status == 'never launched' and len(exec_logs) == 0
 
-    async def test_active_after_run(self, event_loop, setup_db, session, add_one_task, execution_manager):
+    async def test_active_after_run(self, event_loop, session, add_one_task, execution_manager):
         client.post('/run_executor/1')
         executor = execution_manager.task_executors[1]
         assert executor.active
 
-    async def test_run(self, event_loop, setup_db, session, add_one_task, execution_manager):
+    async def test_run(self, event_loop, session, add_one_task, execution_manager):
         client.post('/run_executor/1')
         executor = execution_manager.task_executors[1]
         assert executor.task == IntervalTask('echo 0.25s', seconds=0.25)
@@ -88,7 +88,7 @@ class TestExecution:
         exec_out_logs = (await session.scalars(select(ExecutionOutputLog))).all()
         assert len(exec_out_logs) > 0
 
-    async def test_running(self, event_loop, setup_db, session, add_one_task, execution_manager):
+    async def test_running(self, event_loop, session, add_one_task, execution_manager):
         session.add(IntervalTask('echo start & timeout 1 > NUL', seconds=1))
         session.commit()
         await execution_manager.sync()
@@ -99,13 +99,13 @@ class TestExecution:
 
         assert execution_manager.task_executors[1].status == 'started'
 
-    async def test_inactive_after_run_and_stop(self, event_loop, setup_db, session, add_one_task, execution_manager):
+    async def test_inactive_after_run_and_stop(self, event_loop, session, add_one_task, execution_manager):
         client.post('/run_executor/1')
         client.post('/stop_executor/1')
         executor = execution_manager.task_executors[1]
         assert not executor.active
 
-    async def test_stop(self, event_loop, setup_db, session, add_one_task, execution_manager):
+    async def test_stop(self, event_loop, session, add_one_task, execution_manager):
         client.post('/run_executor/1')
         await asyncio.sleep(0.6)
 

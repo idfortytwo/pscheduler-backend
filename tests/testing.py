@@ -33,7 +33,7 @@ async def setup_db():
 
 
 @pytest.fixture
-async def session():
+async def session(setup_db):
     db_session = Session()
     yield db_session
     await db_session.rollback()
