@@ -71,6 +71,9 @@ class ExecutionLog(Base):
             if k in self.__table__.columns
         }
 
+    def __repr__(self):
+        return f"ExecutionLog({self.task_id}, '{self.status}', {self.start_date}, {self.finish_date})"
+
 
 class ExecutionState(Enum):
     AWAITING = auto()
@@ -92,8 +95,8 @@ class ExecutionOutputLog(Base):
         Index('ids_index', 'execution_output_log_id', 'execution_log_id', unique=True),
     )
 
-    def __init__(self, message: str, time: datetime.datetime, task_run_id: int):
-        self.execution_log_id = task_run_id
+    def __init__(self, message: str, time: datetime.datetime, execution_log_id: int):
+        self.execution_log_id = execution_log_id
         self.message = message
         self.time = time
 
@@ -104,3 +107,6 @@ class ExecutionOutputLog(Base):
             in self.__dict__.items()
             if k in self.__table__.columns
         }
+
+    def __repr__(self):
+        return f"OutLog('{self.message.rstrip()}', {self.time}, {self.execution_log_id})"
