@@ -1,17 +1,18 @@
+import asyncio
 import datetime
 import json
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from api.app import app
 
 from db import connection
 from db.connection import Session
-from db.models import Base
+from db.models import Base, ExecutionLog, ExecutionOutputLog, TaskModel
 from scheduler.task import IntervalTask, CronTask, DateTask
-
 
 test_conn_str = connection.conn_str = 'sqlite+aiosqlite:///test_db.sqlite'
 test_engine = connection.engine = create_async_engine(test_conn_str)
@@ -32,15 +33,20 @@ async def setup_db():
 
 
 @pytest.fixture
-async def session(setup_db):
+async def session():
     db_session = Session()
     yield db_session
     await db_session.rollback()
 
+    await db_session.execute(delete(TaskModel))
+    await db_session.execute(delete(ExecutionLog))
+    await db_session.execute(delete(ExecutionOutputLog))
+    await db_session.commit()
+
 
 @pytest.fixture
 async def add_one_task(session):
-    session.add(IntervalTask('echo 1s', seconds=1))
+    session.add(IntervalTask('echo 0.25s', seconds=0.25))
     await session.commit()
 
 
@@ -50,6 +56,13 @@ async def add_three_tasks(session):
     session.add(CronTask('echo cron', '1 0 * * *'))
     session.add(DateTask('echo date', date=datetime.datetime.utcnow()))
     await session.commit()
+
+
+@pytest.fixture(scope='session')
+def event_loop():
+    loop = asyncio.get_event_loop()
+    yield loop
+    loop.close()
 
 
 def to_json(data):
