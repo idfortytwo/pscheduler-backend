@@ -65,6 +65,10 @@ class IntervalTask(Task):
             'weeks': weeks
         }
         trigger_args = {k: v for k, v in kwargs.items() if v}
+
+        if timedelta(**trigger_args) == timedelta():
+            raise ValueError('interval should be greater than 0')
+
         super().__init__(command, str(trigger_args))
 
     def to_dict(self):
