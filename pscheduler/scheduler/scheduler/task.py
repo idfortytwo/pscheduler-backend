@@ -3,6 +3,7 @@ import ast
 from datetime import datetime, timedelta
 from abc import abstractmethod, ABC
 from typing import Iterator, NoReturn
+from croniter import croniter
 
 from db.models import TaskModel
 
@@ -42,11 +43,18 @@ class Task(TaskModel, ABC):
 class CronTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'cron'}
 
-    def __init__(self, command: str, schedule_params: any):
-        super().__init__(command, schedule_params)
+    def __init__(self, command: str, cron: str):
+        super().__init__(command, cron)
+
+    @property
+    def cron_iter(self):
+        if not hasattr(self, '_cron_iter'):
+            self._cron_iter = croniter(self.trigger_args)
+        return self._cron_iter
 
     def get_next_run_date_iter(self) -> Iterator[datetime]:
-        pass
+        while True:
+            yield self.cron_iter.get_next(datetime)
 
     def reset_iter(self) -> NoReturn:
         pass
@@ -97,10 +105,12 @@ class DateTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'date'}
 
     def __init__(self, command: str, date: datetime):
-        super().__init__(command, date.isoformat())
+        super().__init__(command, date)
 
     def get_next_run_date_iter(self) -> Iterator[datetime]:
-        pass
+        yield self.trigger_args
+        while True:
+            yield None
 
     def reset_iter(self) -> NoReturn:
         pass

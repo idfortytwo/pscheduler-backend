@@ -1,8 +1,9 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
+from dateutil import rrule
 
 import pytest
 
-from scheduler.task import Task, IntervalTask
+from scheduler.task import Task, IntervalTask, DateTask, CronTask
 
 
 class TestInterval:
@@ -38,3 +39,48 @@ class TestInterval:
     def test_no_params(self):
         with pytest.raises(ValueError):
             IntervalTask('echo test')
+
+
+class TestDate:
+    @pytest.fixture
+    def run_date(self):
+        return datetime(2021, 12, 14, 0, 50, 45)
+
+    @pytest.fixture
+    def task(self, run_date):
+        return DateTask('echo test', run_date)
+
+    def test_run(self, run_date, task):
+        task_iter = task.get_next_run_date_iter()
+        assert next(task_iter) == run_date
+
+    def test_next_run_never(self, task):
+        task_iter = task.get_next_run_date_iter()
+        next(task_iter)
+        assert next(task_iter) is None
+
+
+class TestCron:
+    @staticmethod
+    def get_rrule(*args, **kwargs):
+        return rrule.rrule(*args, **kwargs, count=10, dtstart=datetime.utcnow().replace(second=0))
+
+    cron_args = {
+        '0,30 * * * *': get_rrule(rrule.HOURLY, byminute=[0, 30]),
+        '0 8-23/5 * * *': get_rrule(rrule.DAILY, byhour=[8, 13, 18, 23], byminute=0),
+        '0 0 * * sat,sun': get_rrule(rrule.DAILY, byweekday=[rrule.SA, rrule.SU], byhour=0, byminute=0)
+    }
+
+    test_names = [
+        str(args)
+        for args
+        in cron_args.keys()
+    ]
+
+    @pytest.mark.parametrize("cron, rrule", cron_args.items(), ids=test_names)
+    def test_intervals(self, cron, rrule):
+        task = CronTask('echo test', cron)
+        task_iter = task.get_next_run_date_iter()
+
+        for rrule_date in list(rrule):
+            assert rrule_date == next(task_iter)
