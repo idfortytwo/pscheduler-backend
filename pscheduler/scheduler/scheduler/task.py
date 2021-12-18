@@ -2,7 +2,7 @@ import ast
 
 from datetime import datetime, timedelta
 from abc import abstractmethod, ABC
-from typing import Iterator, NoReturn
+from typing import Iterator
 from croniter import croniter
 
 from db.models import TaskModel
@@ -14,12 +14,9 @@ class Task(TaskModel, ABC):
         self.command = command
         self.trigger_args = schedule_params
 
+    @property
     @abstractmethod
-    def get_next_run_date_iter(self) -> Iterator[datetime]:
-        pass
-
-    @abstractmethod
-    def reset_iter(self) -> NoReturn:
+    def run_date_iter(self) -> Iterator[datetime]:
         pass
 
     def to_dict(self):
@@ -47,17 +44,8 @@ class CronTask(Task):
         super().__init__(command, cron)
 
     @property
-    def cron_iter(self):
-        if not hasattr(self, '_cron_iter'):
-            self._cron_iter = croniter(self.trigger_args)
-        return self._cron_iter
-
-    def get_next_run_date_iter(self) -> Iterator[datetime]:
-        while True:
-            yield self.cron_iter.get_next(datetime)
-
-    def reset_iter(self) -> NoReturn:
-        pass
+    def run_date_iter(self) -> Iterator[datetime]:
+        return croniter(self.trigger_args, ret_type=datetime)
 
 
 class IntervalTask(Task):
@@ -89,14 +77,11 @@ class IntervalTask(Task):
         args = ast.literal_eval(self.trigger_args)
         return timedelta(**args)
 
-    def reset_iter(self):
-        if hasattr(self, 'run_date'):
-            delattr(self, 'run_date')
+    @property
+    def run_date_iter(self) -> Iterator[datetime]:
+        self.run_date = datetime.utcnow()
 
-    def get_next_run_date_iter(self) -> Iterator[datetime]:
         while True:
-            if not hasattr(self, 'run_date'):
-                self.run_date = datetime.utcnow()
             self.run_date += self.interval
             yield self.run_date
 
@@ -107,13 +92,11 @@ class DateTask(Task):
     def __init__(self, command: str, date: datetime):
         super().__init__(command, date)
 
-    def get_next_run_date_iter(self) -> Iterator[datetime]:
+    @property
+    def run_date_iter(self) -> Iterator[datetime]:
         yield self.trigger_args
         while True:
             yield None
-
-    def reset_iter(self) -> NoReturn:
-        pass
 
 
 class TaskFactory:

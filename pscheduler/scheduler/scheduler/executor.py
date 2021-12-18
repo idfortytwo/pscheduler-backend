@@ -31,12 +31,11 @@ class TaskExecutor:
 
     def run(self):
         if not self._active:
-            self._next_run_date_iter = self._task.get_next_run_date_iter()
+            self._run_date_iter = self._task.run_date_iter
             self._timer_handle = self._sched_next_run()
             self._active = True
 
     def stop(self):
-        self._task.reset_iter()
         if self._timer_handle:
             self._timer_handle.cancel()
         self._active = False
@@ -54,13 +53,13 @@ class TaskExecutor:
         loop_base_time = datetime.utcnow() - timedelta(seconds=self._loop.time())
         now_ts = (datetime.utcnow() - loop_base_time).total_seconds()
 
-        run_date = next(self._next_run_date_iter)
+        run_date = next(self._run_date_iter)
 
         missed = False
         while (next_run_ts := (run_date - loop_base_time).total_seconds()) - now_ts < 0:
             missed = True
             self._log_missed(run_date)
-            run_date = next(self._next_run_date_iter)
+            run_date = next(self._run_date_iter)
 
         if missed:
             self._log_missed(run_date)

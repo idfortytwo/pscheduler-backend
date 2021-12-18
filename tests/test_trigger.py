@@ -21,7 +21,7 @@ class TestInterval:
 
     @staticmethod
     def get_interval(task: Task) -> timedelta:
-        task_iter = task.get_next_run_date_iter()
+        task_iter = task.run_date_iter
         prev_run, next_run = next(task_iter), next(task_iter)
         return next_run - prev_run
 
@@ -51,11 +51,11 @@ class TestDate:
         return DateTask('echo test', run_date)
 
     def test_run(self, run_date, task):
-        task_iter = task.get_next_run_date_iter()
+        task_iter = task.run_date_iter
         assert next(task_iter) == run_date
 
     def test_next_run_never(self, task):
-        task_iter = task.get_next_run_date_iter()
+        task_iter = task.run_date_iter
         next(task_iter)
         assert next(task_iter) is None
 
@@ -80,7 +80,7 @@ class TestCron:
     @pytest.mark.parametrize("cron, rrule", cron_args.items(), ids=test_names)
     def test_intervals(self, cron, rrule):
         task = CronTask('echo test', cron)
-        task_iter = task.get_next_run_date_iter()
+        task_iter = task.run_date_iter
 
-        for rrule_date in list(rrule):
+        for rrule_date in rrule:
             assert rrule_date == next(task_iter)
