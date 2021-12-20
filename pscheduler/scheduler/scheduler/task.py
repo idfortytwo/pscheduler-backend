@@ -52,21 +52,32 @@ class IntervalTask(Task):
 
     def __init__(self, command: str, trigger_args=None, *,
                  days=0, seconds=0, minutes=0, hours=0, weeks=0):
-
         if trigger_args is None:
-            kwargs = {
+            trigger_args = {
                 'days': days,
                 'seconds': seconds,
                 'minutes': minutes,
                 'hours': hours,
                 'weeks': weeks
             }
-            trigger_args = {k: v for k, v in kwargs.items() if v}
+
+        trigger_args = {
+            k: v
+            for k, v in trigger_args.items()
+            if self.validate(v)
+        }
 
         if timedelta(**trigger_args) == timedelta():
             raise ValueError('interval should be greater than 0')
 
         super().__init__(command, json.dumps(trigger_args))
+
+    @staticmethod
+    def validate(value: int):
+        if value is None:
+            return False
+        else:
+            return value > 0
 
     def to_dict(self):
         _dict = super().to_dict()
