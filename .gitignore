@@ -6,3 +6,4 @@ __pycache__
 plantuml.jar
 diagram.png
 test_db.sqlite
+.env
