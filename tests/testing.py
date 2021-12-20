@@ -51,6 +51,12 @@ async def add_one_task(session):
 
 
 @pytest.fixture
+async def add_long_task(session):
+    session.add(IntervalTask('echo started & timeout /T 5 /NOBREAK > nul', seconds=0.25))
+    await session.commit()
+
+
+@pytest.fixture
 async def add_three_tasks(session):
     session.add(IntervalTask('echo 1s', seconds=1))
     session.add(CronTask('echo cron', '1 0 * * *'))

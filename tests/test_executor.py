@@ -6,7 +6,7 @@ from sqlalchemy import select
 from db.models import ExecutionLog, ExecutionOutputLog
 from scheduler.executor import ExecutionManager
 from scheduler.task import IntervalTask, Task
-from tests.testing import event_loop, client, session, add_one_task, add_three_tasks, setup_db  # noqa
+from tests.testing import event_loop, client, session, add_one_task, add_long_task, add_three_tasks, setup_db  # noqa
 from util import TaskOutputLogger
 
 
@@ -89,9 +89,7 @@ class TestExecution:
         exec_out_logs = (await session.scalars(select(ExecutionOutputLog))).all()
         assert len(exec_out_logs) > 0
 
-    async def test_running(self, event_loop, session, add_one_task, execution_manager):
-        session.add(IntervalTask('echo start & timeout 1 > NUL', seconds=1))
-        session.commit()
+    async def test_running(self, event_loop, session, add_long_task, execution_manager):
         await execution_manager.sync()
         client.post('/run_executor/1')
 
