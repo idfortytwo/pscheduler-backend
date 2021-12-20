@@ -2,17 +2,16 @@ import ast
 
 from datetime import datetime, timedelta
 from abc import abstractmethod, ABC
-from typing import Iterator
+from typing import Iterator, Dict
 from croniter import croniter
 
 from db.models import TaskModel
 
 
 class Task(TaskModel, ABC):
-    @abstractmethod
-    def __init__(self, command: str, schedule_params: any):
+    def __init__(self, command: str, trigger_args: any):
         self.command = command
-        self.trigger_args = schedule_params
+        self.trigger_args = trigger_args
 
     @property
     @abstractmethod
@@ -51,16 +50,18 @@ class CronTask(Task):
 class IntervalTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'interval'}
 
-    def __init__(self, command: str, /, *,
+    def __init__(self, command: str, trigger_args=None, *,
                  days=0, seconds=0, minutes=0, hours=0, weeks=0):
-        kwargs = {
-            'days': days,
-            'seconds': seconds,
-            'minutes': minutes,
-            'hours': hours,
-            'weeks': weeks
-        }
-        trigger_args = {k: v for k, v in kwargs.items() if v}
+
+        if trigger_args is None:
+            kwargs = {
+                'days': days,
+                'seconds': seconds,
+                'minutes': minutes,
+                'hours': hours,
+                'weeks': weeks
+            }
+            trigger_args = {k: v for k, v in kwargs.items() if v}
 
         if timedelta(**trigger_args) == timedelta():
             raise ValueError('interval should be greater than 0')
@@ -107,8 +108,18 @@ class TaskFactory:
     }
 
     @staticmethod
-    def create(command: str, trigger_type: str, trigger_args):
+    def _get_class(trigger_type: str):
         TaskClass = TaskFactory._trigger_type_mapping.get(trigger_type)
         if not TaskClass:
             raise ValueError(f"No such trigger type '{trigger_type}'")
-        return TaskClass(command, **trigger_args)
+        return TaskClass
+
+    @staticmethod
+    def create(command: str, trigger_type: str, trigger_args_str: str):
+        TaskClass = TaskFactory._get_class(trigger_type)
+        return TaskClass(command, trigger_args_str)
+
+    @staticmethod
+    def create_from_kwargs(command: str, trigger_type: str, trigger_kwargs: Dict):
+        TaskClass = TaskFactory._get_class(trigger_type)
+        return TaskClass(command, **trigger_kwargs)
