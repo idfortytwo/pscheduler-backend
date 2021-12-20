@@ -1,4 +1,4 @@
-import ast
+import json
 
 from datetime import datetime, timedelta
 from abc import abstractmethod, ABC
@@ -66,16 +66,16 @@ class IntervalTask(Task):
         if timedelta(**trigger_args) == timedelta():
             raise ValueError('interval should be greater than 0')
 
-        super().__init__(command, str(trigger_args))
+        super().__init__(command, json.dumps(trigger_args))
 
     def to_dict(self):
         _dict = super().to_dict()
-        _dict['trigger_args'] = ast.literal_eval(_dict['trigger_args'])
+        _dict['trigger_args'] = json.loads(_dict['trigger_args'])
         return _dict
 
     @property
     def interval(self):
-        args = ast.literal_eval(self.trigger_args)
+        args = json.loads(self.trigger_args)
         return timedelta(**args)
 
     @property

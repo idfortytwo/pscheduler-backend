@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 from sqlalchemy import select, delete, update
@@ -49,7 +50,7 @@ class DAL:
             update(Task).
             filter(Task.task_id == task_id).
             values(
-                trigger_args=str(task.trigger_args),
+                trigger_args=json.dumps(task.trigger_args).strip('"'),
                 command=task.command,
                 trigger_type=task.trigger_type
             )
