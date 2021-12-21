@@ -91,7 +91,7 @@ class Execution:
     def __init__(self, task: Task, status_callback: Callable):
         self._task = task
         self._status_callback = status_callback
-        self.log = ExecutionLog(self._task.task_id)
+        self._log = ExecutionLog(self._task.task_id)
 
     async def start(self):
         await self._log_start()
@@ -107,7 +107,7 @@ class Execution:
 
         while line := await sub.stdout.readline():
             print(line.decode(), end='')
-            line_log = ExecutionOutputLog(line.decode(), datetime.utcnow(), self.log.execution_log_id)
+            line_log = ExecutionOutputLog(line.decode(), datetime.utcnow(), self._log.execution_log_id)
             logger.log(line_log)
 
         await self._log_finish()
@@ -116,25 +116,25 @@ class Execution:
 
     async def _log_start(self):
         async with Session(expire_on_commit=False) as session:
-            self.log = ExecutionLog(self._task.task_id)
-            self.log.set_state(ExecutionState.STARTED)
-            self._status_callback(self.log.status)
+            self._log = ExecutionLog(self._task.task_id)
+            self._log.set_state(ExecutionState.STARTED)
+            self._status_callback(self._log.status)
 
-            session.add(self.log)
+            session.add(self._log)
             await session.commit()
 
     async def _log_finish(self):
         async with Session(expire_on_commit=False) as session:
-            self.log.set_state(ExecutionState.FINISHED)
-            self._status_callback(self.log.status)
-            self.log.finish_date = datetime.utcnow()
+            self._log.set_state(ExecutionState.FINISHED)
+            self._status_callback(self._log.status)
+            self._log.finish_date = datetime.utcnow()
 
-            session.add(self.log)
+            session.add(self._log)
             await session.commit()
 
     @property
     def status(self):
-        return self.log.status
+        return self._log.status
 
 
 class ExecutionManager(metaclass=SingletonMeta):
@@ -172,7 +172,7 @@ class ExecutionManager(metaclass=SingletonMeta):
         current_executor.stop()
         del current_executor
 
-    def _delete_db_tasks(self, db_tasks):
+    def _delete_db_tasks(self, db_tasks: List[Task]):
         db_task_ids = set(db_task.task_id for db_task in db_tasks)
         curr_task_ids = set(self.task_executors.keys())
         for task_id in curr_task_ids - db_task_ids:

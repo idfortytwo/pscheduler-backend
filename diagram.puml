@@ -2,92 +2,226 @@
 
 class abc.ABCMeta <<metaclass>>
 
-package scheduler.taskconfig {
-    abstract class TaskConfig {
-        + {static} trigger_type
+package scheduler.task {
+    abstract class Task {
+        + command: str
         + trigger_args: any
-        + command_args: [str]
-        + {abstract} get_run_date(): datetime
-        + {abstract} get_next_date(): datetime
+        + {abstract} run_date_iter: Iterator[datetime]
+        + to_dict(): Dict
     }
-    TaskConfig --u|> models.TaskConfigModel
+    Task --|> db.models.TaskModel
 
-    class CronTaskConfig {
-        +get_run_date(): datetime
-        +get_next_date(): datetime
+    class CronTask {
+        + run_date_iter: Iterator[datetime]
     }
-    class IntervalTaskConfig{
-        +get_run_date(): datetime
-        +get_next_date(): datetime
+    class IntervalTask{
+        + run_date_iter: Iterator[datetime]
+        + <<r/o>> interval: timedelta
+        + {static} validate(int): bool
     }
-    class DateTaskConfig{
-        +get_run_date(): datetime
-        +get_next_date(): datetime
+    class DateTask{
+        + run_date_iter: Iterator[datetime]
     }
-    CronTaskConfig     -u[dashed]-|> TaskConfig
-    IntervalTaskConfig -u[dashed]-|> TaskConfig
-    DateTaskConfig     -u[dashed]-|> TaskConfig
+    CronTask     .-u|> Task
+    IntervalTask .-u|> Task
+    DateTask     .-u|> Task
 
-    class TaskConfigs {
-        - _config_types = [TaskConfig]
-        - {static} _get_query_for_cls(session, cls): [TaskConfig]
-        + fetch(session): Generator[TaskConfig]
+    class TaskFactory {
+        - {static} _trigger_type_mapping = Dict[str, Type[Task]]
+        - {static} _get_class(str): Type[Task]
+        + {static} create(str, str, str): Task
+        + {static} create_from_kwargs(str, str, Dict): Task
     }
-    TaskConfigs -u[dashed]-> CronTaskConfig
-    TaskConfigs -u[dashed]-> IntervalTaskConfig
-    TaskConfigs -u[dashed]-> DateTaskConfig
-    TaskConfigs -l[dashed]-> connection.Session
+    TaskFactory .-u> CronTask
+    TaskFactory .-u> IntervalTask
+    TaskFactory .-u> DateTask
 }
 
-package connection {
-    class Session
-    class session_scope <<contextmanager>>
-    Session -[dashed]-> engine
-    session_scope -[dashed]> Session
-}
+class db.connection.Session
+db.connection.Session "*" o.-r "1" db.connection.engine
 
-package models {
+package db.models {
     class Base
-    Base -[dashed]l> DeclarativeABCMeta
+    Base .d> DeclarativeABCMeta
 
-    class TaskConfigModel {
-        + {static} task_config_id: Column
+    class ExecutionLog {
+        + {static} execution_log_id: Column
+        + {static} task_id: Column
+        + {static} status: Column
+        + {static} start_date: Column
+        + {static} finish_date: Column
+        + {static} return_code: Column
+    }
+
+
+    class ExecutionOutputLog {
+        + {static} execution_output_log_id: Column
+        + {static} execution_log_id: Column
+        + {static} message: Column
+        + {static} time: Column
+    }
+
+    class TaskModel {
+        + {static} task_id: Column
+        + {static} command: Column
         + {static} trigger_type: Column
         + {static} trigger_args: Column
-        + {static} command_args: Column
     }
-    TaskConfigModel .-u|> Base
+
+    ExecutionLog .-u|> Base
+    ExecutionOutputLog .-u|> Base
+    TaskModel .-u|> Base
 
     class DeclarativeABCMeta <<metaclass>>
-    DeclarativeABCMeta --u|> abc.ABCMeta
+    DeclarativeABCMeta --|> abc.ABCMeta
 }
-
 
 package scheduler.executor {
     class TaskExecutor {
-        - _task_config: TaskConfig
+        + <<r/o>> task: Task
         - _loop: EventLoop
-        - _next_run_date_it: Iterator[Datetime]
         - _timer_handle: TimerHandle
+        + status: str
+        + <<r/o>> active: bool
 
         + run()
         + stop()
+        + update_status(str)
+        + to_dict(): Dict
+        - _sched_next_run(datetime): TimerHandle
+        - _log_missed(datetime)
         - _get_next_run_ts(): float
         - _run_iteration()
-        - _execute_process(): int
     }
+    TaskExecutor *.-r Execution
+    TaskExecutor "1" *.---u "1" db.models.ExecutionLog
 
-    class TaskManager {
-        + {r/o} task_dict: Dict[int, TaskExecutor]
-        + add_tasK(TaskConfig)
+    class Execution {
+        - _task: Task
+        - _status_callback: Callable
+        + <<r/o>> status: str
+        + start(): int
+        - _execute_process(): int
+        - _log_start()
+        - _log_finish()
+    }
+    Execution "1" *.---u "*" db.models.ExecutionOutputLog
+
+    class ExecutionManager {
+        + task_executors: Dict[int, TaskExecutor]
+        + sync()
         + run_task(int)
         + run_all()
         + stop_task(int)
         + stop_all()
+        - _update_db_tasks(List[Task])
+        - _add_task(Task)
+        - _update_task(TaskExecutor, Task)
+        - _delete_db_tasks(List[Task])
     }
-    TaskManager "1" --l* "n" TaskExecutor
+
+    TaskFactory *. db.connection.Session
+    Execution *.-l db.connection.Session
+    ExecutionManager *.-- db.connection.Session
+    ExecutionManager "1" *.-u "*" TaskExecutor
 }
-TaskExecutor "1" .-o "1" TaskConfig
-TaskManager .-> TaskConfig
+
+package db.dal {
+    class DAL {
+        + session: AsyncSession
+        + execution_manager: ExecutionManager
+        + get_tasks(): List[Task]
+        + get_task(int): Task
+        + add_task(TaskInputModel)
+        + delete_task(int)
+        + update_task(int, TaskInputModel)
+        + get_execution_logs(): List[ExecutionLog]
+        + get_execution_log(int): ExecutionLog
+        + get_execution_output_logs(int, int): List[ExecutionOutputLog]
+    }
+
+    DAL "*" *.---u "1" db.connection.Session
+    DAL "*" o-.-u "1" ExecutionManager
+    DAL o.-u db.models.ExecutionLog
+    DAL o.-u db.models.ExecutionOutputLog
+    DAL o.-r api.models.TaskInputModel
+}
+
+class api.models.TaskInputModel {
+    + {static} task_id: Optional[int]
+    + {static} command: str
+    + {static} trigger_type: str
+    + {static} trigger_args: Union[str, Dict]
+}
+
+package api.app {
+    class FastAPI {
+        app
+    }
+    class Config {
+        config
+    }
+    class Server {
+        server
+    }
+
+    Server o-d Config
+    Config o-d FastAPI
+    FastAPI o.- api.routers
+}
+
+package api.routers {
+    class task_router {
+        + get_tasks(DAL)
+        + get_task(DAL, int)
+        + add_task(DAL, TaskInputModel)
+        + delete_task(DAL, int)
+        + update_task(DAL, int, TaskInputModel)
+    }
+    task_router o.-d api.models.TaskInputModel
+
+    class task_executor_router {
+        + get_executors()
+        + get_executor(int)
+        + stop_executor(int)
+    }
+    task_executor_router o. ExecutionManager
+
+    class execution_log_router {
+        + get_execution_logs(DAL)
+    }
+
+    class execution_output_log_router {
+        + get_execution_output_logs(DAL, int, Optional[int])
+    }
+
+
+    execution_output_log_router -[hidden]d- task_executor_router
+    execution_log_router -[hidden]d- task_router
+
+}
+
+api.routers *.-r DAL
+
+package util {
+    class SingletonMeta {
+        - _instances: Dict[Type, object]
+        + __call__(Type, ...): object
+    }
+
+    class TaskOutputLogger {
+        - _loop: EventLoop
+        - _buffer: Deque[ExecutionOutputLog]
+        + log(ExecutionOutputLog)
+        + flush()
+        - _flush_periodically(int)
+    }
+    TaskOutputLogger "1" *.- "1" db.connection.Session
+    TaskOutputLogger "1" .--* "1" TaskExecutor
+    TaskOutputLogger "1" .--* "1" Execution
+
+    SingletonMeta .u> TaskOutputLogger
+    ExecutionManager .u> SingletonMeta
+}
 
 @enduml

@@ -14,8 +14,8 @@ class TaskOutputLogger(metaclass=SingletonMeta):
 
         self._loop.create_task(self._flush_periodically())
 
-    def log(self, value: ExecutionOutputLog):
-        self._buffer.append(value)
+    def log(self, record: ExecutionOutputLog):
+        self._buffer.append(record)
 
     async def _flush_periodically(self, seconds=1):
         while True:
