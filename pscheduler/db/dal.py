@@ -60,7 +60,8 @@ class DAL:
 
     async def get_execution_logs(self) -> List[ExecutionLog]:
         rs = await self.session.execute(
-            select(ExecutionLog)
+            select(ExecutionLog).
+            order_by(ExecutionLog.execution_log_id)
         )
         return rs.scalars().all()
 
