@@ -27,18 +27,18 @@ class TestInterval:
 
     @pytest.mark.parametrize("trigger_args", interval_args, ids=test_names)
     def test_intervals(self, trigger_args):
-        task = IntervalTask('echo test', **trigger_args)
+        task = IntervalTask('test', 'echo test', **trigger_args)
         interval = self.get_interval(task)
         next_interval = self.get_interval(task)
         assert interval == next_interval == timedelta(**trigger_args)
 
     def test_0_interval(self):
         with pytest.raises(ValueError):
-            IntervalTask('echo test', seconds=0)
+            IntervalTask('test', 'echo test', seconds=0)
 
     def test_no_params(self):
         with pytest.raises(ValueError):
-            IntervalTask('echo test')
+            IntervalTask('test', 'echo test')
 
 
 class TestDate:
@@ -48,7 +48,7 @@ class TestDate:
 
     @pytest.fixture
     def task(self, run_date):
-        return DateTask('echo test', run_date)
+        return DateTask('date', 'echo test', run_date)
 
     def test_run(self, run_date, task):
         task_iter = task.run_date_iter
@@ -79,7 +79,7 @@ class TestCron:
 
     @pytest.mark.parametrize("cron, rrule", cron_args.items(), ids=test_names)
     def test_intervals(self, cron, rrule):
-        task = CronTask('echo test', cron)
+        task = CronTask('cron', 'echo test', cron)
         task_iter = task.run_date_iter
 
         for rrule_date in rrule:

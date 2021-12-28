@@ -30,7 +30,7 @@ class DAL:
         return rs.scalar()
 
     async def add_task(self, task: TaskInputModel):
-        new_task = TaskFactory.create(task.command, task.trigger_type, task.trigger_args)
+        new_task = TaskFactory.create(task.title, task.command, task.trigger_type, task.trigger_args, descr=task.descr)
         self.session.add(new_task)
 
         await self.session.commit()
@@ -50,8 +50,10 @@ class DAL:
             update(Task).
             filter(Task.task_id == task_id).
             values(
-                trigger_args=json.dumps(task.trigger_args).strip('"'),
                 command=task.command,
+                title=task.title,
+                descr=task.descr,
+                trigger_args=json.dumps(task.trigger_args).strip('"'),
                 trigger_type=task.trigger_type
             )
         )

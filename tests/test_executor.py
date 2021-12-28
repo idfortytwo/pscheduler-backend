@@ -31,6 +31,8 @@ class TestExecutorManager:
         client.post(
             '/task',
             json={
+                'title': 'every 65s',
+                'descr': None,
                 'command': 'echo 65s',
                 'trigger_type': 'interval',
                 'trigger_args': {
@@ -40,7 +42,7 @@ class TestExecutorManager:
             }
         )
         executor = execution_manager.task_executors[1]
-        assert executor.task == IntervalTask('echo 65s', seconds=5, minutes=1)
+        assert executor.task == IntervalTask('every 65s', 'echo 65s', seconds=5, minutes=1)
 
     async def test_delete(self, session, add_one_task, execution_manager):
         assert len(execution_manager.task_executors) == 1
@@ -49,11 +51,13 @@ class TestExecutorManager:
 
     async def test_update(self, session, add_one_task, execution_manager):
         old_task = execution_manager.task_executors[1].task
-        assert old_task == IntervalTask('echo 0.25s', seconds=0.25)
+        assert old_task == IntervalTask('every 0.25s', 'echo 0.25s', seconds=0.25)
 
         client.post(
             '/task/1',
             json={
+                'title': 'every 65 second',
+                'descr': None,
                 'command': 'echo 65s',
                 'trigger_type': 'interval',
                 'trigger_args': {
@@ -63,7 +67,7 @@ class TestExecutorManager:
             }
         )
         new_task = execution_manager.task_executors[1].task
-        assert new_task == IntervalTask('echo 65s', seconds=5, minutes=1)
+        assert new_task == IntervalTask('every 65s', 'echo 65s', seconds=5, minutes=1)
 
 
 class TestExecution:
@@ -81,7 +85,7 @@ class TestExecution:
     async def test_run(self, event_loop, session, add_one_task, execution_manager):
         client.post('/run_executor/1')
         executor = execution_manager.task_executors[1]
-        assert executor.task == IntervalTask('echo 0.25s', seconds=0.25)
+        assert executor.task == IntervalTask('every 0.25s', 'echo 0.25s', seconds=0.25)
 
         await asyncio.sleep(0.3)
         await logger.flush()

@@ -20,6 +20,8 @@ class TaskModel(Base):
     __tablename__ = 'task'
 
     task_id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(Text, nullable=False)
+    descr = Column(Text)
     command = Column(Text, nullable=False)
     trigger_type = Column(Text, nullable=False)
     trigger_args = Column(Text, nullable=False)

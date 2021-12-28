@@ -9,9 +9,11 @@ from db.models import TaskModel
 
 
 class Task(TaskModel, ABC):
-    def __init__(self, command: str, trigger_args: any):
+    def __init__(self, title: str, command: str, trigger_args: any, descr: str):
+        self.title = title
         self.command = command
         self.trigger_args = trigger_args
+        self.descr = descr
 
     @property
     @abstractmethod
@@ -39,8 +41,8 @@ class Task(TaskModel, ABC):
 class CronTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'cron'}
 
-    def __init__(self, command: str, cron: str):
-        super().__init__(command, cron)
+    def __init__(self, title: str, command: str, cron_string: str, descr: str = ''):
+        super().__init__(title, command, trigger_args=cron_string, descr=descr)
 
     @property
     def run_date_iter(self) -> Iterator[datetime]:
@@ -50,8 +52,8 @@ class CronTask(Task):
 class IntervalTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'interval'}
 
-    def __init__(self, command: str, trigger_args=None, *,
-                 days=0, seconds=0, minutes=0, hours=0, weeks=0):
+    def __init__(self, title: str, command: str, *,
+                 days=0, seconds=0, minutes=0, hours=0, weeks=0, descr: str = '', trigger_args=None):
         if trigger_args is None:
             trigger_args = {
                 'days': days,
@@ -70,7 +72,7 @@ class IntervalTask(Task):
         if timedelta(**trigger_args) == timedelta():
             raise ValueError('interval should be greater than 0')
 
-        super().__init__(command, json.dumps(trigger_args))
+        super().__init__(title, command, trigger_args=json.dumps(trigger_args), descr=descr)
 
     @staticmethod
     def validate(value: int):
@@ -101,8 +103,8 @@ class IntervalTask(Task):
 class DateTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'date'}
 
-    def __init__(self, command: str, date: datetime):
-        super().__init__(command, date)
+    def __init__(self, title: str, command: str, date: datetime, descr: str = ''):
+        super().__init__(title, command, trigger_args=date, descr=descr)
 
     @property
     def run_date_iter(self) -> Iterator[datetime]:
@@ -126,11 +128,11 @@ class TaskFactory:
         return TaskClass
 
     @staticmethod
-    def create(command: str, trigger_type: str, trigger_args_str: str):
+    def create(title: str, command: str, trigger_type: str, trigger_args_str: str, descr: str = ''):
         TaskClass = TaskFactory._get_class(trigger_type)
-        return TaskClass(command, trigger_args_str)
+        return TaskClass(title, command, trigger_args=trigger_args_str, descr=descr)
 
     @staticmethod
-    def create_from_kwargs(command: str, trigger_type: str, trigger_kwargs: Dict):
+    def create_from_kwargs(title: str, command: str, trigger_type: str, trigger_kwargs: Dict, descr: str = ''):
         TaskClass = TaskFactory._get_class(trigger_type)
-        return TaskClass(command, **trigger_kwargs)
+        return TaskClass(title, command, **trigger_kwargs, descr=descr)

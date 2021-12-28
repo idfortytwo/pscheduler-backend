@@ -46,21 +46,22 @@ async def session(setup_db):
 
 @pytest.fixture
 async def add_one_task(session):
-    session.add(IntervalTask('echo 0.25s', seconds=0.25))
+    session.add(IntervalTask('every 0.25s', 'echo 0.25s', seconds=0.25, descr='descr'))
     await session.commit()
 
 
 @pytest.fixture
 async def add_long_task(session):
-    session.add(IntervalTask('echo started & timeout /T 5 /NOBREAK > nul', seconds=0.25))
+    session.add(IntervalTask('5 second timeout', 'echo started & timeout /T 5 /NOBREAK > nul', seconds=0.25,
+                             descr='descr'))
     await session.commit()
 
 
 @pytest.fixture
 async def add_three_tasks(session):
-    session.add(IntervalTask('echo 1s', seconds=1))
-    session.add(CronTask('echo cron', '1 0 * * *'))
-    session.add(DateTask('echo date', date=datetime.datetime.utcnow()))
+    session.add(IntervalTask('interval', 'echo 1s', seconds=1))
+    session.add(CronTask('cron', 'echo cron', '1 0 * * *'))
+    session.add(DateTask('date', 'echo date', date=datetime.datetime.utcnow()))
     await session.commit()
 
 

@@ -13,9 +13,9 @@ pytestmark = pytest.mark.asyncio
 
 class TestTask:
     async def test_select_polymorphism(self, session):
-        session.add(IntervalTask('echo 1s', seconds=1))
-        session.add(CronTask('echo cron', '1 0 * * *'))
-        session.add(DateTask('echo date', date=datetime.datetime.utcnow()))
+        session.add(IntervalTask('interval', 'echo 1s', seconds=1))
+        session.add(CronTask('cron', 'echo cron', '1 0 * * *'))
+        session.add(DateTask('date', 'echo date', date=datetime.datetime.utcnow()))
 
         tasks: List[Task] = (await session.execute(
             select(Task).
@@ -44,6 +44,8 @@ class TestTask:
         client.post(
             '/task',
             json={
+                'title': 'every 1s',
+                'descr': 'some descr',
                 'command': 'echo 1s',
                 'trigger_type': 'interval',
                 'trigger_args': {
@@ -52,7 +54,7 @@ class TestTask:
             }
         )
         tasks: List[Task] = (await session.scalars(select(Task))).all()
-        assert tasks == [IntervalTask('echo 1s', seconds=1)]
+        assert tasks == [IntervalTask('every 1s', 'echo 1s', seconds=1, descr='some descr')]
 
     async def test_delete(self, session, add_one_task):
         client.delete('/task/1')
@@ -64,6 +66,8 @@ class TestTask:
         client.post(
             '/task/1',
             json={
+                'title': 'every 65s',
+                'descr': 'some descr',
                 'command': 'echo 65s',
                 'trigger_type': 'interval',
                 'trigger_args': {
@@ -73,4 +77,4 @@ class TestTask:
             }
         )
         tasks: List[Task] = (await session.scalars(select(Task))).all()
-        assert tasks == [IntervalTask('echo 65s', seconds=5, minutes=1)]
+        assert tasks == [IntervalTask('every 65s', 'echo 65s', seconds=5, minutes=1, descr='some descr')]
