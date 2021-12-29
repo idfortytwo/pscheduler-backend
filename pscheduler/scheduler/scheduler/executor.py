@@ -105,7 +105,6 @@ class Execution:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             shell=True)
-        await sub.wait()
 
         while line := await sub.stdout.readline():
             print(line.decode(), end='')
@@ -117,6 +116,7 @@ class Execution:
             line_log = ExecutionOutputErrorLog(line.decode(), datetime.utcnow(), self._log.execution_log_id)
             logger.log(line_log)
 
+        await sub.wait()
         return_code = sub.returncode
         if return_code:
             await self._log_failed(return_code)
