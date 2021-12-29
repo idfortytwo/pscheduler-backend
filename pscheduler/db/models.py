@@ -92,6 +92,7 @@ class ExecutionOutputLog(Base):
     execution_log_id = Column(Integer, ForeignKey('execution_log.execution_log_id'), nullable=False)
     message = Column(Text, nullable=False)
     time = Column(DateTime, nullable=False)
+    error = Column(Integer)
 
     __table_args__ = (
         Index('ids_index', 'execution_output_log_id', 'execution_log_id', unique=True),
@@ -101,14 +102,23 @@ class ExecutionOutputLog(Base):
         self.execution_log_id = execution_log_id
         self.message = message
         self.time = time
+        self.error = 0
 
     def to_dict(self):
-        return {
+        dct = {
             k: v
             for k, v
             in self.__dict__.items()
-            if k in self.__table__.columns
+            if k in self.__table__.columns and k != 'error'
         }
+        dct['error'] = bool(self.error)
+        return dct
 
     def __repr__(self):
         return f"OutLog('{self.message.rstrip()}', {self.time}, {self.execution_log_id})"
+
+
+class ExecutionOutputErrorLog(ExecutionOutputLog):
+    def __init__(self, message: str, time: datetime.datetime, execution_log_id: int):
+        super().__init__(message, time, execution_log_id)
+        self.error = 1

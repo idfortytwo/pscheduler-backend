@@ -7,7 +7,7 @@ import sqlalchemy
 import sqlalchemy.event
 
 from db.connection import Session
-from db.models import ExecutionLog, ExecutionState, ExecutionOutputLog
+from db.models import ExecutionLog, ExecutionState, ExecutionOutputLog, ExecutionOutputErrorLog
 from scheduler.task import Task
 from util import SingletonMeta, logger
 
@@ -114,7 +114,7 @@ class Execution:
 
         while line := await sub.stderr.readline():
             print('err:', line.decode(), end='')
-            line_log = ExecutionOutputLog(line.decode(), datetime.utcnow(), self._log.execution_log_id)
+            line_log = ExecutionOutputErrorLog(line.decode(), datetime.utcnow(), self._log.execution_log_id)
             logger.log(line_log)
 
         return_code = sub.returncode
@@ -155,7 +155,7 @@ class Execution:
     async def _log_failed(self, return_code):
         async with Session(expire_on_commit=False) as session:
             self._log.return_code = return_code
-            self._log.set_state(ExecutionState.FINISHED)
+            self._log.set_state(ExecutionState.FAILED)
             self._log.finish_date = datetime.utcnow()
             self._status_callback(self._log.status)
 
