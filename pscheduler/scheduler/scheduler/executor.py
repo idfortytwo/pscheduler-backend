@@ -118,21 +118,8 @@ class Execution:
 
         await sub.wait()
         return_code = sub.returncode
-        if return_code:
-            await self._log_failed(return_code)
-        else:
-            await self._log_finish()
-
+        await self._log_end(return_code)
         return return_code
-
-    async def _log_stage(self, state: ExecutionState):
-        async with Session(expire_on_commit=False) as session:
-            self._log = ExecutionLog(self._task.task_id)
-            self._log.set_state(state)
-            self._status_callback(self._log.status)
-
-            session.add(self._log)
-            await session.commit()
 
     async def _log_start(self):
         async with Session(expire_on_commit=False) as session:
@@ -142,6 +129,13 @@ class Execution:
 
             session.add(self._log)
             await session.commit()
+
+    async def _log_end(self, return_code: int):
+        if return_code:
+            await self._log_failed(return_code)
+        else:
+            await self._log_finish()
+        await logger.flush()
 
     async def _log_finish(self):
         async with Session(expire_on_commit=False) as session:
