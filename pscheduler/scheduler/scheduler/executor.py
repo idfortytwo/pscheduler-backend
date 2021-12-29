@@ -103,16 +103,36 @@ class Execution:
         sub: asyncio.subprocess.Process = await asyncio.create_subprocess_shell(
             self._task.command,
             stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
             shell=True)
+        await sub.wait()
 
         while line := await sub.stdout.readline():
             print(line.decode(), end='')
             line_log = ExecutionOutputLog(line.decode(), datetime.utcnow(), self._log.execution_log_id)
             logger.log(line_log)
 
-        await self._log_finish()
+        while line := await sub.stderr.readline():
+            print('err:', line.decode(), end='')
+            line_log = ExecutionOutputLog(line.decode(), datetime.utcnow(), self._log.execution_log_id)
+            logger.log(line_log)
 
-        return sub.returncode
+        return_code = sub.returncode
+        if return_code:
+            await self._log_failed(return_code)
+        else:
+            await self._log_finish()
+
+        return return_code
+
+    async def _log_stage(self, state: ExecutionState):
+        async with Session(expire_on_commit=False) as session:
+            self._log = ExecutionLog(self._task.task_id)
+            self._log.set_state(state)
+            self._status_callback(self._log.status)
+
+            session.add(self._log)
+            await session.commit()
 
     async def _log_start(self):
         async with Session(expire_on_commit=False) as session:
@@ -126,8 +146,18 @@ class Execution:
     async def _log_finish(self):
         async with Session(expire_on_commit=False) as session:
             self._log.set_state(ExecutionState.FINISHED)
-            self._status_callback(self._log.status)
             self._log.finish_date = datetime.utcnow()
+            self._status_callback(self._log.status)
+
+            session.add(self._log)
+            await session.commit()
+
+    async def _log_failed(self, return_code):
+        async with Session(expire_on_commit=False) as session:
+            self._log.return_code = return_code
+            self._log.set_state(ExecutionState.FINISHED)
+            self._log.finish_date = datetime.utcnow()
+            self._status_callback(self._log.status)
 
             session.add(self._log)
             await session.commit()
