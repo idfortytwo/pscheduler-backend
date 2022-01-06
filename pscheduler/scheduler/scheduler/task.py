@@ -52,8 +52,8 @@ class CronTask(Task):
 class IntervalTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'interval'}
 
-    def __init__(self, title: str, command: str, *,
-                 days=0, seconds=0, minutes=0, hours=0, weeks=0, descr: str = '', trigger_args=None):
+    def __init__(self, title: str, command: str, trigger_args=None, *,
+                 days=0, seconds=0, minutes=0, hours=0, weeks=0, descr: str = ''):
         if trigger_args is None:
             trigger_args = {
                 'days': days,
@@ -104,11 +104,12 @@ class DateTask(Task):
     __mapper_args__ = {'polymorphic_identity': 'date'}
 
     def __init__(self, title: str, command: str, date: datetime, descr: str = ''):
-        super().__init__(title, command, trigger_args=date, descr=descr)
+        super().__init__(title, command, trigger_args=str(date), descr=descr)
 
     @property
     def run_date_iter(self) -> Iterator[datetime]:
-        yield self.trigger_args
+        val = datetime.fromisoformat(self.trigger_args)
+        yield val
         while True:
             yield None
 
@@ -130,9 +131,9 @@ class TaskFactory:
     @staticmethod
     def create(title: str, command: str, trigger_type: str, trigger_args_str: str, descr: str = ''):
         TaskClass = TaskFactory._get_class(trigger_type)
-        return TaskClass(title, command, trigger_args=trigger_args_str, descr=descr)
+        return TaskClass(title, command, trigger_args_str, descr=descr)
 
     @staticmethod
-    def create_from_kwargs(title: str, command: str, trigger_type: str, trigger_kwargs: Dict, descr: str = ''):
+    def create_from_kwargs(title: str, command: str, trigger_type: str, descr: str = '', **trigger_kwargs: Dict):
         TaskClass = TaskFactory._get_class(trigger_type)
         return TaskClass(title, command, **trigger_kwargs, descr=descr)

@@ -29,34 +29,56 @@ class TaskExecutor:
     def active(self):
         return self._active
 
+    def switch_on(self):
+        self._active = True
+
+    def switch_off(self):
+        self._active = False
+
     def run(self):
         if not self._active:
             self._run_date_iter = self._task.run_date_iter
-            self._timer_handle = self._sched_next_run()
-            self._active = True
+            self._sched_and_switch()
 
-    def stop(self):
-        if self._timer_handle:
-            self._timer_handle.cancel()
-        self._active = False
+    def _sched_and_switch(self):
+        if next_run_timer_handle := self._sched_next_run_and_switch():
+            self._timer_handle = next_run_timer_handle
 
-    def _sched_next_run(self) -> TimerHandle:
-        return self._loop.call_at(self._get_next_run_ts(),
-                                  lambda: asyncio.ensure_future(self._run_iteration()))
+    def _sched_next_run_and_switch(self) -> Union[TimerHandle, None]:
+        if run_date_ts := self._get_next_run_ts():
+            self.switch_on()
+        else:
+            self.switch_off()
 
-    def _log_missed(self, run_date: datetime):
-        missed_log = ExecutionLog(self._task.task_id, start_date=run_date)
-        missed_log.set_state(ExecutionState.MISSED)
-        logger.log(missed_log)
+        return run_date_ts and self._loop.call_at(run_date_ts,
+                                                  lambda: asyncio.ensure_future(self._run_iteration()))
 
-    def _get_next_run_ts(self) -> float:
-        loop_base_time = datetime.utcnow() - timedelta(seconds=self._loop.time())
-        now_ts = (datetime.utcnow() - loop_base_time).total_seconds()
-
+    def _get_next_run_ts(self) -> Union[float, None]:
         run_date = next(self._run_date_iter)
+        if not run_date:
+            return None
 
+        next_run_ts = self._get_first_next_run_ts(run_date)
+        return next_run_ts
+
+    def _get_first_next_run_ts(self, run_date: datetime) -> float:
+        event_loop_base_time = self._get_event_loop_base_time()
+        current_ts = self._get_loop_relative_current_ts(event_loop_base_time)
+
+        first_next_run_ts = self._calc_next_run_ts_until_not_missed(run_date, event_loop_base_time, current_ts)
+        return first_next_run_ts
+
+    def _get_event_loop_base_time(self) -> datetime:
+        return datetime.utcnow() - timedelta(seconds=self._loop.time())
+
+    @staticmethod
+    def _get_loop_relative_current_ts(event_loop_base_time: datetime) -> float:
+        return (datetime.utcnow() - event_loop_base_time).total_seconds()
+
+    def _calc_next_run_ts_until_not_missed(self, run_date: datetime, base_time: datetime, current_ts: float) -> float:
         missed = False
-        while (next_run_ts := (run_date - loop_base_time).total_seconds()) - now_ts < 0:
+
+        while (next_run_ts := self._calc_next_run_ts(run_date, base_time)) - current_ts < 0:
             missed = True
             self._log_missed(run_date)
             run_date = next(self._run_date_iter)
@@ -66,8 +88,24 @@ class TaskExecutor:
 
         return next_run_ts
 
+    def _calc_next_run_ts(self, run_date: datetime, base_time: datetime) -> float:
+        if not run_date:
+            raise RuntimeError(f'no next run date for task {self.task.task_id}')
+
+        return (run_date - base_time).total_seconds()
+
+    def stop(self):
+        if self._timer_handle:
+            self._timer_handle.cancel()
+        self.switch_off()
+
+    def _log_missed(self, run_date: datetime):
+        missed_log = ExecutionLog(self._task.task_id, start_date=run_date)
+        missed_log.set_state(ExecutionState.MISSED)
+        logger.log(missed_log)
+
     async def _run_iteration(self):
-        self._timer_handle = self._sched_next_run()
+        self._timer_handle = self._sched_next_run_and_switch()
 
         self._current_execution = Execution(self.task, status_callback=self.update_status)
         await self._current_execution.start()
