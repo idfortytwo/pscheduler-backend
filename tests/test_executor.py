@@ -87,7 +87,7 @@ class TestExecution:
         executor = execution_manager.task_executors[1]
         assert executor.task == IntervalTask('every 0.25s', 'echo 0.25s', seconds=0.25)
 
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.4)
         await logger.flush()
 
         exec_out_logs = (await session.scalars(select(ExecutionOutputLog))).all()
