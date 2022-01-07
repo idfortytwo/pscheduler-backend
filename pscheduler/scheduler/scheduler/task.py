@@ -1,14 +1,14 @@
 import json
 
 from datetime import datetime, timedelta
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABCMeta
 from typing import Iterator, Dict
 from croniter import croniter
 
 from db.models import TaskModel
 
 
-class Task(TaskModel, ABC):
+class Task(TaskModel, metaclass=ABCMeta):
     def __init__(self, title: str, command: str, trigger_args: any, descr: str):
         self.title = title
         self.command = command

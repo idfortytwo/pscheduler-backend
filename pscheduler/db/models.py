@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import abc
+from abc import ABCMeta, abstractmethod
 import datetime
 
 from enum import Enum, auto
@@ -9,7 +9,7 @@ from sqlalchemy import Column, Text, Integer, DateTime, ForeignKey, Index
 from sqlalchemy.orm import declarative_base, DeclarativeMeta
 
 
-class DeclarativeABCMeta(DeclarativeMeta, abc.ABCMeta):
+class DeclarativeABCMeta(DeclarativeMeta, ABCMeta):
     pass
 
 
