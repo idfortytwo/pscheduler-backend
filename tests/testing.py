@@ -52,7 +52,7 @@ async def add_one_task(session):
 
 @pytest.fixture
 async def add_long_task(session):
-    session.add(IntervalTask('5 second timeout', 'echo started & timeout /T 5 /NOBREAK > nul', seconds=0.25,
+    session.add(IntervalTask('5 second timeout', 'ping 1.1.1.1 -n 10 >NUL', seconds=0.25,
                              descr='descr'))
     await session.commit()
 
