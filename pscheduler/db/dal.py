@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models import TaskInputModel
 from db.connection import Session
-from db.models import ExecutionLog, ExecutionOutputLog
+from db.models import ProcessLog, StdoutLog
 from scheduler.executor import ExecutionManager
 from scheduler.task import Task, TaskFactory
 
@@ -60,25 +60,25 @@ class DAL:
         await self.session.commit()
         await self.execution_manager.sync()
 
-    async def get_execution_logs(self) -> List[ExecutionLog]:
+    async def get_execution_logs(self) -> List[ProcessLog]:
         rs = await self.session.execute(
-            select(ExecutionLog).
-            order_by(ExecutionLog.execution_log_id)
+            select(ProcessLog).
+            order_by(ProcessLog.process_log_id)
         )
         return rs.scalars().all()
 
-    async def get_execution_log(self, exec_log_id: int) -> ExecutionLog:
+    async def get_execution_log(self, exec_log_id: int) -> ProcessLog:
         rs = await self.session.execute(
-            select(ExecutionLog).
-            filter(ExecutionLog.execution_log_id == exec_log_id)
+            select(ProcessLog).
+            filter(ProcessLog.process_log_id == exec_log_id)
         )
         return rs.scalar()
 
     async def get_execution_output_logs(self, exec_log_id: int,
-                                        last_exec_output_log_id: int = None) -> List[ExecutionOutputLog]:
-        q = select(ExecutionOutputLog).filter(ExecutionOutputLog.execution_log_id == exec_log_id)
+                                        last_exec_output_log_id: int = None) -> List[StdoutLog]:
+        q = select(StdoutLog).filter(StdoutLog.execution_log_id == exec_log_id)
         if last_exec_output_log_id:
-            q = q.filter(ExecutionOutputLog.execution_output_log_id > last_exec_output_log_id)
+            q = q.filter(StdoutLog.execution_output_log_id > last_exec_output_log_id)
 
         rs = await self.session.execute(q)
         return rs.scalars().all()

@@ -3,18 +3,18 @@ import collections
 from typing import Deque
 
 from db.connection import Session
-from db.models import ExecutionOutputLog
+from db.models import StdoutLog
 from util.singleton import SingletonMeta
 
 
 class TaskOutputLogger(metaclass=SingletonMeta):
     def __init__(self):
         self._loop = asyncio.get_event_loop()
-        self._buffer: Deque[ExecutionOutputLog] = collections.deque()
+        self._buffer: Deque[StdoutLog] = collections.deque()
 
         self._loop.create_task(self._flush_periodically())
 
-    def log(self, record: ExecutionOutputLog):
+    def log(self, record: StdoutLog):
         self._buffer.append(record)
 
     async def _flush_periodically(self, seconds=1):

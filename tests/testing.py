@@ -11,7 +11,7 @@ from api.app import app
 
 from db import connection
 from db.connection import Session
-from db.models import Base, ExecutionLog, ExecutionOutputLog, TaskModel
+from db.models import Base, ProcessLog, StdoutLog, TaskModel
 from scheduler.task import IntervalTask, CronTask, DateTask
 
 test_conn_str = connection.conn_str = 'sqlite+aiosqlite:///test_db.sqlite'
@@ -39,8 +39,8 @@ async def session(setup_db):
     await db_session.rollback()
 
     await db_session.execute(delete(TaskModel))
-    await db_session.execute(delete(ExecutionLog))
-    await db_session.execute(delete(ExecutionOutputLog))
+    await db_session.execute(delete(ProcessLog))
+    await db_session.execute(delete(StdoutLog))
     await db_session.commit()
 
 

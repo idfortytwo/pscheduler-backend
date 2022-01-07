@@ -37,10 +37,10 @@ class TaskModel(Base):
         return f'TaskModel({self.task_id}, {self.trigger_type}, {self.command}, {self.trigger_args})'
 
 
-class ExecutionLog(Base):
-    __tablename__ = 'execution_log'
+class ProcessLog(Base):
+    __tablename__ = 'process_log'
 
-    execution_log_id = Column(Integer, primary_key=True, autoincrement=True)
+    process_log_id = Column(Integer, primary_key=True, autoincrement=True)
     task_id = Column(Integer, ForeignKey('task.task_id'), nullable=False)
     status = Column(Text, nullable=False)
     start_date = Column(DateTime, default=datetime.datetime.utcnow)
@@ -74,7 +74,7 @@ class ExecutionLog(Base):
         }
 
     def __repr__(self):
-        return f"ExecutionLog({self.task_id}, '{self.status}', {self.start_date}, {self.finish_date})"
+        return f"ProcessLog({self.task_id}, '{self.status}', {self.start_date}, {self.finish_date})"
 
 
 class ExecutionState(Enum):
@@ -85,17 +85,17 @@ class ExecutionState(Enum):
     MISSED = auto()
 
 
-class ExecutionOutputLogABC(Base, abc.ABC):
-    __tablename__ = 'execution_output_log'
+class OutputLog(Base, metaclass=ABCMeta):
+    __tablename__ = 'output_log'
 
-    execution_output_log_id = Column(Integer, primary_key=True, autoincrement=True)
-    execution_log_id = Column(Integer, ForeignKey('execution_log.execution_log_id'), nullable=False)
+    output_log_id = Column(Integer, primary_key=True, autoincrement=True)
+    process_log_id = Column(Integer, ForeignKey('process_log.process_log_id'), nullable=False)
     message = Column(Text, nullable=False)
     time = Column(DateTime, nullable=False)
     is_error = Column(Integer, nullable=False)
 
     __table_args__ = (
-        Index('ids_index', 'execution_output_log_id', 'execution_log_id', unique=True),
+        Index('ids_index', 'output_log_id', 'process_log_id', unique=True),
     )
 
     def to_dict(self):
@@ -109,21 +109,21 @@ class ExecutionOutputLogABC(Base, abc.ABC):
         return dct
 
     def __repr__(self):
-        return f"{self.__class__.__name__}('{self.message.rstrip()}', {self.time}, {self.execution_log_id})"
+        return f"{self.__class__.__name__}('{self.message.rstrip()}', {self.time}, {self.process_log_id})"
 
-    @abc.abstractmethod
-    def __init__(self, message: str, time: datetime.datetime, execution_log_id: int, is_error: int):
-        self.execution_log_id = execution_log_id
+    @abstractmethod
+    def __init__(self, message: str, time: datetime.datetime, process_log_id: int, is_error: int):
+        self.process_log_id = process_log_id
         self.message = message
         self.time = time
         self.is_error = is_error
 
 
-class ExecutionOutputLog(ExecutionOutputLogABC):
-    def __init__(self, message: str, time: datetime.datetime, execution_log_id: int):
-        super().__init__(message, time, execution_log_id, is_error=0)
+class StdoutLog(OutputLog):
+    def __init__(self, message: str, time: datetime.datetime, process_log_id: int):
+        super().__init__(message, time, process_log_id, is_error=0)
 
 
-class ExecutionOutputErrorLog(ExecutionOutputLogABC):
-    def __init__(self, message: str, time: datetime.datetime, execution_log_id: int):
-        super().__init__(message, time, execution_log_id, is_error=1)
+class StderrLog(OutputLog):
+    def __init__(self, message: str, time: datetime.datetime, process_log_id: int):
+        super().__init__(message, time, process_log_id, is_error=1)

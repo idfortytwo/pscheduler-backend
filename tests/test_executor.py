@@ -3,7 +3,7 @@ import json
 
 import pytest
 from sqlalchemy import select
-from db.models import ExecutionLog, ExecutionOutputLog
+from db.models import ProcessLog, StdoutLog
 from scheduler.executor import ExecutionManager
 from scheduler.task import IntervalTask, Task
 from tests.testing import event_loop, client, session, add_one_task, add_long_task, add_three_tasks, setup_db  # noqa
@@ -74,7 +74,7 @@ class TestExecution:
     async def test_never_launched(self, session, add_one_task, execution_manager):
         executor = execution_manager.task_executors[1]
 
-        exec_logs = (await session.scalars(select(ExecutionLog))).all()
+        exec_logs = (await session.scalars(select(ProcessLog))).all()
         assert not executor.active and executor.status == 'never launched' and len(exec_logs) == 0
 
     async def test_active_after_run(self, event_loop, session, add_one_task, execution_manager):
@@ -90,14 +90,14 @@ class TestExecution:
         await asyncio.sleep(0.4)
         await logger.flush()
 
-        exec_out_logs = (await session.scalars(select(ExecutionOutputLog))).all()
+        exec_out_logs = (await session.scalars(select(StdoutLog))).all()
         assert len(exec_out_logs) > 0
 
     async def test_running(self, event_loop, session, add_long_task, execution_manager):
         await execution_manager.sync()
         client.post('/run_executor/1')
 
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.3)
         await logger.flush()
 
         assert execution_manager.task_executors[1].status == 'started'
@@ -116,7 +116,7 @@ class TestExecution:
         await asyncio.sleep(0.3)
 
         await logger.flush()
-        exec_logs = (await session.scalars(select(ExecutionLog))).all()
+        exec_logs = (await session.scalars(select(ProcessLog))).all()
         assert len(exec_logs) == 1
         assert all(log.status == 'finished' for log in exec_logs)
 
