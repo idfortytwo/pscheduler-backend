@@ -27,7 +27,6 @@ async def get_task(task_id: int, db: DAL = Depends(get_dal)):
 @router.post('/task', status_code=201)
 async def add_task(task: TaskInputModel, db: DAL = Depends(get_dal)):
     try:
-        print(f'{task = }')
         new_task = await db.add_task(task)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
