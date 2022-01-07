@@ -85,24 +85,18 @@ class ExecutionState(Enum):
     MISSED = auto()
 
 
-class ExecutionOutputLog(Base):
+class ExecutionOutputLogABC(Base, abc.ABC):
     __tablename__ = 'execution_output_log'
 
     execution_output_log_id = Column(Integer, primary_key=True, autoincrement=True)
     execution_log_id = Column(Integer, ForeignKey('execution_log.execution_log_id'), nullable=False)
     message = Column(Text, nullable=False)
     time = Column(DateTime, nullable=False)
-    error = Column(Integer)
+    is_error = Column(Integer, nullable=False)
 
     __table_args__ = (
         Index('ids_index', 'execution_output_log_id', 'execution_log_id', unique=True),
     )
-
-    def __init__(self, message: str, time: datetime.datetime, execution_log_id: int):
-        self.execution_log_id = execution_log_id
-        self.message = message
-        self.time = time
-        self.error = 0
 
     def to_dict(self):
         dct = {
@@ -111,14 +105,25 @@ class ExecutionOutputLog(Base):
             in self.__dict__.items()
             if k in self.__table__.columns and k != 'error'
         }
-        dct['error'] = bool(self.error)
+        dct['error'] = bool(self.is_error)
         return dct
 
     def __repr__(self):
-        return f"OutLog('{self.message.rstrip()}', {self.time}, {self.execution_log_id})"
+        return f"{self.__class__.__name__}('{self.message.rstrip()}', {self.time}, {self.execution_log_id})"
+
+    @abc.abstractmethod
+    def __init__(self, message: str, time: datetime.datetime, execution_log_id: int, is_error: int):
+        self.execution_log_id = execution_log_id
+        self.message = message
+        self.time = time
+        self.is_error = is_error
 
 
-class ExecutionOutputErrorLog(ExecutionOutputLog):
+class ExecutionOutputLog(ExecutionOutputLogABC):
     def __init__(self, message: str, time: datetime.datetime, execution_log_id: int):
-        super().__init__(message, time, execution_log_id)
-        self.error = 1
+        super().__init__(message, time, execution_log_id, is_error=0)
+
+
+class ExecutionOutputErrorLog(ExecutionOutputLogABC):
+    def __init__(self, message: str, time: datetime.datetime, execution_log_id: int):
+        super().__init__(message, time, execution_log_id, is_error=1)
