@@ -7,3 +7,4 @@ plantuml.jar
 diagram.png
 test_db.sqlite
 .env
+script.py
