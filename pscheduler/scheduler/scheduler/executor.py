@@ -1,10 +1,11 @@
 import asyncio
-from asyncio import TimerHandle
-from datetime import datetime, timedelta
-from typing import List, Dict, Union, Callable
-
 import sqlalchemy
-import sqlalchemy.event
+
+from asyncio import TimerHandle
+from asyncio.subprocess import Process
+from datetime import datetime, timedelta
+from aiostream import stream
+from typing import List, Dict, Union, Callable, AsyncGenerator
 
 from db.connection import Session
 from db.models import ProcessLog, ExecutionState, StdoutLog, StderrLog
@@ -126,26 +127,34 @@ class ExecutionMonitor:
         return return_code
 
     async def _execute_process(self) -> int:
-        process: asyncio.subprocess.Process = await asyncio.create_subprocess_shell(
+        process = await asyncio.create_subprocess_shell(
             self._task.command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             shell=True)
 
-        while line := await process.stdout.readline():
-            print(line.decode(), end='')
-            out_log = StdoutLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
-            logger.log(out_log)
-
-        while line := await process.stderr.readline():
-            print('err:', line.decode(), end='')
-            err_log = StderrLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
-            logger.log(err_log)
+        async for output_log in self.yield_output_logs(process):
+            print(output_log.message, end='')
+            logger.log(output_log)
 
         await process.wait()
         return_code = process.returncode
         await self._log_end(return_code)
         return return_code
+
+    async def yield_stdout_logs(self, process: Process):
+        while line := await process.stdout.readline():
+            yield StdoutLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
+
+    async def yield_stderr_logs(self, process: Process):
+        while line := await process.stderr.readline():
+            yield StderrLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
+
+    async def yield_output_logs(self, process: Process) -> AsyncGenerator[Union[StdoutLog, StderrLog], None]:
+        output = stream.merge(self.yield_stdout_logs(process), self.yield_stderr_logs(process))
+        async with output.stream() as streamer:
+            async for log in streamer:
+                yield log
 
     async def _log_start(self):
         async with Session(expire_on_commit=False) as session:

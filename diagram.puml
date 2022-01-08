@@ -9,7 +9,8 @@ package scheduler.task {
         + {abstract} run_date_iter: Iterator[datetime]
         + to_dict(): Dict
     }
-    Task --|> db.models.TaskModel
+    Task --r|> db.models.TaskModel
+    Task .--> abc.ABCMeta
 
     class CronTask {
         + run_date_iter: Iterator[datetime]
@@ -42,7 +43,7 @@ db.connection.Session "*" o.-r "1" db.connection.engine
 
 package db.models {
     class Base
-    Base .d> DeclarativeABCMeta
+    Base .r> DeclarativeABCMeta
 
     class ExecutionLog {
         + {static} execution_log_id: Column
@@ -54,12 +55,20 @@ package db.models {
     }
 
 
-    class ExecutionOutputLog {
+    class ConsoleLog {
         + {static} execution_output_log_id: Column
         + {static} execution_log_id: Column
         + {static} message: Column
         + {static} time: Column
+        + to_dict(): Dict
     }
+    ConsoleLog .--u|> Base
+    ConsoleLog .--u> abc.ABCMeta
+
+    class StdoutLog
+    class StderrLog
+    StdoutLog .-u|> ConsoleLog
+    StderrLog .-u|> ConsoleLog
 
     class TaskModel {
         + {static} task_id: Column
@@ -68,9 +77,8 @@ package db.models {
         + {static} trigger_args: Column
     }
 
-    ExecutionLog .-u|> Base
-    ExecutionOutputLog .-u|> Base
-    TaskModel .-u|> Base
+    ExecutionLog .--u|> Base
+    TaskModel .-|> Base
 
     class DeclarativeABCMeta <<metaclass>>
     DeclarativeABCMeta --|> abc.ABCMeta
@@ -105,7 +113,8 @@ package scheduler.executor {
         - _log_start()
         - _log_finish()
     }
-    Execution "1" *.---u "*" db.models.ExecutionOutputLog
+    Execution "1" *.---u "*" db.models.StdoutLog
+    Execution "1" *.---u "*" db.models.StderrLog
 
     class ExecutionManager {
         + task_executors: Dict[int, TaskExecutor]
@@ -137,13 +146,13 @@ package db.dal {
         + update_task(int, TaskInputModel)
         + get_execution_logs(): List[ExecutionLog]
         + get_execution_log(int): ExecutionLog
-        + get_execution_output_logs(int, int): List[ExecutionOutputLog]
+        + get_execution_output_logs(int, int): List[StdoutLog]
     }
 
     DAL "*" *.---u "1" db.connection.Session
     DAL "*" o-.-u "1" ExecutionManager
     DAL o.-u db.models.ExecutionLog
-    DAL o.-u db.models.ExecutionOutputLog
+    DAL o.-u db.models.StdoutLog
     DAL o.-r api.models.TaskInputModel
 }
 
@@ -211,8 +220,8 @@ package util {
 
     class TaskOutputLogger {
         - _loop: EventLoop
-        - _buffer: Deque[ExecutionOutputLog]
-        + log(ExecutionOutputLog)
+        - _buffer: Deque[StdoutLog]
+        + log(StdoutLog)
         + flush()
         - _flush_periodically(int)
     }

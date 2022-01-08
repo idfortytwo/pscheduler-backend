@@ -87,6 +87,9 @@ class ExecutionState(Enum):
 
 class OutputLog(Base, metaclass=ABCMeta):
     __tablename__ = 'output_log'
+    __table_args__ = (
+        Index('ids_index', 'output_log_id', 'process_log_id', unique=True),
+    )
 
     output_log_id = Column(Integer, primary_key=True, autoincrement=True)
     process_log_id = Column(Integer, ForeignKey('process_log.process_log_id'), nullable=False)
@@ -94,9 +97,9 @@ class OutputLog(Base, metaclass=ABCMeta):
     time = Column(DateTime, nullable=False)
     is_error = Column(Integer, nullable=False)
 
-    __table_args__ = (
-        Index('ids_index', 'output_log_id', 'process_log_id', unique=True),
-    )
+    __mapper_args__ = {
+        'polymorphic_on': is_error
+    }
 
     def to_dict(self):
         dct = {
@@ -109,7 +112,7 @@ class OutputLog(Base, metaclass=ABCMeta):
         return dct
 
     def __repr__(self):
-        return f"{self.__class__.__name__}('{self.message.rstrip()}', {self.time}, {self.process_log_id})"
+        return f"{self.__class__.__name__}('{self.message.rstrip()}', {self.output_log_id}, {self.process_log_id})"
 
     @abstractmethod
     def __init__(self, message: str, time: datetime.datetime, process_log_id: int, is_error: int):
@@ -120,10 +123,18 @@ class OutputLog(Base, metaclass=ABCMeta):
 
 
 class StdoutLog(OutputLog):
+    __mapper_args__ = {
+        'polymorphic_identity': 0
+    }
+
     def __init__(self, message: str, time: datetime.datetime, process_log_id: int):
         super().__init__(message, time, process_log_id, is_error=0)
 
 
 class StderrLog(OutputLog):
+    __mapper_args__ = {
+        'polymorphic_identity': 1
+    }
+
     def __init__(self, message: str, time: datetime.datetime, process_log_id: int):
         super().__init__(message, time, process_log_id, is_error=1)

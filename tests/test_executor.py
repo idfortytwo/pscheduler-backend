@@ -1,11 +1,13 @@
 import asyncio
+import datetime
 import json
+from typing import List
 
 import pytest
-from sqlalchemy import select
-from db.models import ProcessLog, StdoutLog
-from scheduler.executor import ExecutionManager
-from scheduler.task import IntervalTask, Task
+from sqlalchemy import select, insert
+from db.models import ProcessLog, StdoutLog, OutputLog, StderrLog
+from scheduler.executor import ExecutionManager, ExecutionMonitor
+from scheduler.task import IntervalTask, Task, DateTask
 from tests.testing import event_loop, client, session, add_one_task, add_long_task, add_three_tasks, setup_db  # noqa
 from util import TaskOutputLogger
 
@@ -134,3 +136,34 @@ class TestExecution:
                 for task in tasks
             ]
         }
+
+    @staticmethod
+    @pytest.fixture
+    async def mixed_output_executor(session) -> ExecutionMonitor:
+        task = IntervalTask('run mixed script', 'python script.py 0.01', seconds=1)
+        task.task_id = 1
+        return ExecutionMonitor(task, lambda _: None)
+
+    @pytest.fixture
+    def mixed_output_error_order(self):
+        return [0, 1, 0, 0, 1, 0, 0, 0, 1]
+
+    async def test_output_logs_error_status(self, session,
+                                            mixed_output_executor: ExecutionMonitor, mixed_output_error_order):
+        await mixed_output_executor.start()
+        logs: List[OutputLog] = await session.scalars(
+            select(OutputLog)
+        )
+
+        for log, is_error in zip(logs, mixed_output_error_order):
+            assert log.is_error == is_error
+
+    async def test_output_logs_polymorphism(self, session,
+                                            mixed_output_executor: ExecutionMonitor, mixed_output_error_order):
+        await mixed_output_executor.start()
+        logs: List[OutputLog] = await session.scalars(
+            select(OutputLog)
+        )
+
+        for log, is_error in zip(logs, mixed_output_error_order):
+            assert log.__class__ == [StdoutLog, StderrLog][is_error]
