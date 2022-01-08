@@ -30,24 +30,29 @@ class TaskExecutor:
     def active(self):
         return self._active
 
-    def switch_on(self):
-        self._active = True
-
-    def switch_off(self):
-        self._active = False
-
     def run(self):
         if not self._active:
             self._run_date_iter = iter(self._task.run_date_iter)
             self._timer_handle = self._sched_next_run_and_switch()
 
+    def stop(self):
+        if self._timer_handle:
+            self._timer_handle.cancel()
+        self._switch_off()
+
+    def _switch_on(self):
+        self._active = True
+
+    def _switch_off(self):
+        self._active = False
+
     def _sched_next_run_and_switch(self) -> Union[TimerHandle, None]:
         if run_date_ts := self._get_next_run_ts():
-            self.switch_on()
+            self._switch_on()
             return self._loop.call_at(run_date_ts,
                                       lambda: asyncio.ensure_future(self._run_iteration()))
         else:
-            self.switch_off()
+            self._switch_off()
 
     def _get_next_run_ts(self) -> Union[float, None]:
         run_date = next(self._run_date_iter)
@@ -84,11 +89,6 @@ class TaskExecutor:
         base_time = self._get_event_loop_base_time()
         return (run_date - base_time).total_seconds()
 
-    def stop(self):
-        if self._timer_handle:
-            self._timer_handle.cancel()
-        self.switch_off()
-
     def _log_missed_run(self, run_date: datetime):
         missed_log = ProcessLog(self._task.task_id, start_date=run_date)
         missed_log.set_state(ExecutionState.MISSED)
@@ -97,10 +97,10 @@ class TaskExecutor:
     async def _run_iteration(self):
         self._timer_handle = self._sched_next_run_and_switch()
 
-        self._current_execution = ExecutionMonitor(self.task, status_callback=self.update_status)
+        self._current_execution = ExecutionMonitor(self.task, status_callback=self._update_status)
         await self._current_execution.start()
 
-    def update_status(self, status):
+    def _update_status(self, status):
         self.status = status
 
     def to_dict(self):
@@ -126,36 +126,6 @@ class ExecutionMonitor:
         return_code = await self._execute_process()
         return return_code
 
-    async def _execute_process(self) -> int:
-        process = await asyncio.create_subprocess_shell(
-            self._task.command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            shell=True)
-
-        async for output_log in self.yield_output_logs(process):
-            print(output_log.message, end='')
-            logger.log(output_log)
-
-        await process.wait()
-        return_code = process.returncode
-        await self._log_end(return_code)
-        return return_code
-
-    async def yield_stdout_logs(self, process: Process):
-        while line := await process.stdout.readline():
-            yield StdoutLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
-
-    async def yield_stderr_logs(self, process: Process):
-        while line := await process.stderr.readline():
-            yield StderrLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
-
-    async def yield_output_logs(self, process: Process) -> AsyncGenerator[Union[StdoutLog, StderrLog], None]:
-        output = stream.merge(self.yield_stdout_logs(process), self.yield_stderr_logs(process))
-        async with output.stream() as streamer:
-            async for log in streamer:
-                yield log
-
     async def _log_start(self):
         async with Session(expire_on_commit=False) as session:
             self._log = ProcessLog(self._task.task_id)
@@ -164,6 +134,36 @@ class ExecutionMonitor:
 
             session.add(self._log)
             await session.commit()
+
+    async def _execute_process(self) -> int:
+        process = await asyncio.create_subprocess_shell(
+            self._task.command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            shell=True)
+
+        async for output_log in self._yield_output_logs(process):
+            print(output_log.message, end='')
+            logger.log(output_log)
+
+        await process.wait()
+        return_code = process.returncode
+        await self._log_end(return_code)
+        return return_code
+
+    async def _yield_stdout_logs(self, process: Process):
+        while line := await process.stdout.readline():
+            yield StdoutLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
+
+    async def _yield_stderr_logs(self, process: Process):
+        while line := await process.stderr.readline():
+            yield StderrLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
+
+    async def _yield_output_logs(self, process: Process) -> AsyncGenerator[Union[StdoutLog, StderrLog], None]:
+        output = stream.merge(self._yield_stdout_logs(process), self._yield_stderr_logs(process))
+        async with output.stream() as streamer:
+            async for log in streamer:
+                yield log
 
     async def _log_end(self, return_code: int):
         if return_code:
@@ -181,7 +181,7 @@ class ExecutionMonitor:
             session.add(self._log)
             await session.commit()
 
-    async def _log_failed(self, return_code):
+    async def _log_failed(self, return_code: int):
         async with Session(expire_on_commit=False) as session:
             self._log.return_code = return_code
             self._log.set_state(ExecutionState.FAILED)
@@ -190,10 +190,6 @@ class ExecutionMonitor:
 
             session.add(self._log)
             await session.commit()
-
-    @property
-    def status(self):
-        return self._log.status
 
 
 class ExecutionManager(metaclass=SingletonMeta):
