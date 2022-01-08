@@ -6,6 +6,17 @@ from api.routers._shared import router
 from db.dal import DAL, get_dal
 
 
+@router.get('/process_log', status_code=200)
+async def get_process_logs(db: DAL = Depends(get_dal)):
+    process_logs = await db.get_process_logs()
+
+    return {'process_logs': [
+        log.to_dict()
+        for log
+        in process_logs
+    ]}
+
+
 @router.get('/execution/output/{process_log_id}', status_code=200)
 async def get_output_logs(process_log_id: int, last_output_log_id: Optional[int] = None,
                           db: DAL = Depends(get_dal)):
