@@ -8,7 +8,7 @@ from aiostream import stream
 from typing import List, Dict, Union, Callable, AsyncGenerator
 
 from db.connection import Session
-from db.models import ProcessLog, ExecutionState, StdoutLog, StderrLog
+from db.models import ProcessLog, ExecutionState, ConsoleLog, StderrLog
 from scheduler.task import Task
 from util import SingletonMeta, logger
 
@@ -72,7 +72,6 @@ class TaskExecutor:
 class RunDateIterator:
     def __init__(self, task: Task):
         self._task = task
-        self._loop = asyncio.get_event_loop()
 
     def __iter__(self):
         self._run_date_iter = iter(self._task.run_date_iter)
@@ -146,13 +145,13 @@ class ExecutionMonitor:
 
     async def _yield_stdout_logs(self, process: Process):
         while line := await process.stdout.readline():
-            yield StdoutLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
+            yield ConsoleLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
 
     async def _yield_stderr_logs(self, process: Process):
         while line := await process.stderr.readline():
             yield StderrLog(line.decode(), datetime.utcnow(), self._log.process_log_id)
 
-    async def _yield_output_logs(self, process: Process) -> AsyncGenerator[Union[StdoutLog, StderrLog], None]:
+    async def _yield_output_logs(self, process: Process) -> AsyncGenerator[Union[ConsoleLog, StderrLog], None]:
         output = stream.merge(self._yield_stdout_logs(process), self._yield_stderr_logs(process))
         async with output.stream() as streamer:
             async for log in streamer:

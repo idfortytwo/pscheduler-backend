@@ -5,14 +5,14 @@ from typing import List
 
 import pytest
 from sqlalchemy import select, insert
-from db.models import ProcessLog, StdoutLog, OutputLog, StderrLog
+from db.models import ProcessLog, ConsoleLog, OutputLog, StderrLog
 from scheduler.executor import ExecutionManager, ExecutionMonitor
 from scheduler.task import IntervalTask, Task, DateTask
 from tests.testing import event_loop, client, session, add_one_task, add_long_task, add_three_tasks, setup_db  # noqa
-from util import TaskOutputLogger
+from util import OutputLogger
 
 
-logger = TaskOutputLogger()
+logger = OutputLogger()
 pytestmark = pytest.mark.asyncio
 
 
@@ -95,7 +95,7 @@ class TestExecution:
         await asyncio.sleep(0.4)
         await logger.flush()
 
-        exec_out_logs = (await session.scalars(select(StdoutLog))).all()
+        exec_out_logs = (await session.scalars(select(ConsoleLog))).all()
         assert len(exec_out_logs) > 0
 
     async def test_running(self, event_loop, session, add_long_task, execution_manager):
@@ -169,4 +169,4 @@ class TestExecution:
         )
 
         for log, is_error in zip(logs, mixed_output_error_order):
-            assert log.__class__ == [StdoutLog, StderrLog][is_error]
+            assert log.__class__ == [ConsoleLog, StderrLog][is_error]

@@ -1,4 +1,4 @@
 from util.singleton import SingletonMeta
-from util.logger import TaskOutputLogger
+from util.logger import OutputLogger
 
-logger = TaskOutputLogger()
+logger = OutputLogger()

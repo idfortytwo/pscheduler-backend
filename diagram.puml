@@ -95,20 +95,25 @@ package scheduler.executor {
 
         + run()
         + stop()
-        - _switch_on()
-        - _switch_off()
-        - _sched_next_run_and_switch(): Union[TimerHandle, None]
-        - _get_next_run_ts(): Union[float, None]
-        - _calc_next_run_ts_until_not_missed(): float
-        - _get_loop_relative_current_ts(): float
-        - _get_event_loop_base_time(): datetime
-        - _calc_next_run_ts(datetime): float
-        - _log_missed_run(datetime)
+        - _scheduling_loop()
+        - {static} _await_run(datetime)
         - _update_status(str)
         + to_dict(): Dict
     }
-    TaskExecutor *.-r ExecutionMonitor
+    TaskExecutor *.--l Task
+    TaskExecutor *.---r ExecutionMonitor
     TaskExecutor "1" *.---u "1" db.models.ProcessLog
+
+    class RunDateIterator {
+        - _task: Task
+        + __iter__(): RunDateIterator
+        + __next__(): datetime
+        - _get_next_run_date(): Union[datetime, None]
+        - _skip_missed(): datetime
+        - _log_missed_run(datetime)
+    }
+    TaskExecutor *.-d RunDateIterator
+    RunDateIterator *.--l Task
 
     class ExecutionMonitor {
         - _task: Task
@@ -139,7 +144,7 @@ package scheduler.executor {
         - _delete_db_tasks(List[Task])
     }
 
-    TaskFactory *. db.connection.Session
+    TaskFactory *.--l db.connection.Session
     ExecutionMonitor *.--d db.connection.Session
     ExecutionManager *.-- db.connection.Session
     ExecutionManager "1" *.--r "*" TaskExecutor
@@ -227,18 +232,18 @@ package util {
         + __call__(Type, ...): object
     }
 
-    class TaskOutputLogger {
+    class OutputLogger {
         - _loop: EventLoop
-        - _buffer: Deque[StdoutLog]
-        + log(StdoutLog)
+        - _buffer: Deque[ConsoleLog]
+        + log(ConsoleLog)
         + flush()
         - _flush_periodically(int)
     }
-    TaskOutputLogger "1" *.- "1" db.connection.Session
-    TaskOutputLogger "1" .--* "1" TaskExecutor
-    TaskOutputLogger "1" .--* "1" ExecutionMonitor
+    OutputLogger "1" *.- "1" db.connection.Session
+    OutputLogger "1" .--* "1" TaskExecutor
+    OutputLogger "1" .--* "1" ExecutionMonitor
 
-    SingletonMeta .--l> TaskOutputLogger
+    SingletonMeta .--l> OutputLogger
     ExecutionManager .u> SingletonMeta
 }
 

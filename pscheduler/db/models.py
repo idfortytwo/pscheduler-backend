@@ -122,7 +122,7 @@ class OutputLog(Base, metaclass=ABCMeta):
         self.is_error = is_error
 
 
-class StdoutLog(OutputLog):
+class ConsoleLog(OutputLog):
     __mapper_args__ = {
         'polymorphic_identity': 0
     }
