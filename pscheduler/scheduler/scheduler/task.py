@@ -93,7 +93,7 @@ class IntervalTask(Task):
 
     @property
     def run_date_iter(self) -> Iterator[datetime]:
-        self.run_date = datetime.utcnow()
+        self.run_date = datetime.now()
 
         while True:
             self.run_date += self.interval
