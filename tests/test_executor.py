@@ -27,6 +27,9 @@ async def execution_manager():
 
 class TestExecutorManager:
     async def test_empty(self, session, execution_manager):
+        executor = execution_manager.task_executors.get(1)
+        if executor:
+            print(executor.task)
         assert len(execution_manager.task_executors) == 0
 
     async def test_insert(self, session, execution_manager):
@@ -112,10 +115,10 @@ class TestExecution:
 
     async def test_stop(self, event_loop, session, add_one_task, execution_manager):
         client.post('/run_executor/1')
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.2)
 
         client.post('/stop_executor/1')
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.2)
 
         await logger.flush()
         exec_logs = (await session.scalars(select(ProcessLog))).all()
