@@ -40,7 +40,7 @@ package scheduler.task {
 
 class db.connection.Session
 class db.connection.engine
-db.connection.Session "*" o. "1" db.connection.engine
+db.connection.Session "*" o- "1" db.connection.engine
 
 package db.models {
     class Base
@@ -100,9 +100,9 @@ package scheduler.executor {
         - _update_status(str)
         + to_dict(): Dict
     }
-    TaskExecutor *.--l Task
-    TaskExecutor *.---r ExecutionMonitor
-    TaskExecutor "1" *.---u "1" db.models.ProcessLog
+    TaskExecutor *---l Task
+    TaskExecutor *----r ExecutionMonitor
+    TaskExecutor "1" *----u "1" db.models.ProcessLog
 
     class RunDateIterator {
         - _task: Task
@@ -112,8 +112,8 @@ package scheduler.executor {
         - _skip_missed(): datetime
         - _log_missed_run(datetime)
     }
-    TaskExecutor *.-d RunDateIterator
-    RunDateIterator *.--l Task
+    TaskExecutor *--d RunDateIterator
+    RunDateIterator *---l Task
 
     class ExecutionMonitor {
         - _task: Task
@@ -128,8 +128,8 @@ package scheduler.executor {
         - _log_finish()
         - _log_finish(int)
     }
-    ExecutionMonitor "1" *.---u "*" db.models.StdoutLog
-    ExecutionMonitor "1" *.---u "*" db.models.StderrLog
+    ExecutionMonitor "1" *----u "*" db.models.StdoutLog
+    ExecutionMonitor "1" *----u "*" db.models.StderrLog
 
     class ExecutionManager {
         + task_executors: Dict[int, TaskExecutor]
@@ -144,10 +144,10 @@ package scheduler.executor {
         - _delete_db_tasks(List[Task])
     }
 
-    TaskFactory *.--l db.connection.Session
-    ExecutionMonitor *.--d db.connection.Session
-    ExecutionManager *.-- db.connection.Session
-    ExecutionManager "1" *.--r "*" TaskExecutor
+    TaskFactory *---l db.connection.Session
+    ExecutionMonitor *---d db.connection.Session
+    ExecutionManager *--- db.connection.Session
+    ExecutionManager "1" *---r "*" TaskExecutor
 }
 
 package db.dal {
@@ -164,11 +164,11 @@ package db.dal {
         + get_output_logs(int, int): List[OutputLog]
     }
 
-    DAL "*" *.---l "1" db.connection.Session
-    DAL "*" o.---- "1" ExecutionManager
-    DAL o.-u db.models.ProcessLog
-    DAL o.-u db.models.OutputLog
-    DAL o.-d api.models.TaskInputModel
+    DAL "*" *----l "1" db.connection.Session
+    DAL "*" o----- "1" ExecutionManager
+    DAL o--u db.models.ProcessLog
+    DAL o--u db.models.OutputLog
+    DAL o--d api.models.TaskInputModel
 }
 
 class api.models.TaskInputModel {
@@ -214,16 +214,16 @@ package api.routers {
     }
 
     task_executor_router .r-o ExecutionManager
-    task_router o.-u api.models.TaskInputModel
+    task_router o--u api.models.TaskInputModel
 }
 
-FastAPI o.-u task_executor_router
-FastAPI o.-u task_router
-FastAPI o.-u log_router
+FastAPI o--u task_executor_router
+FastAPI o--u task_router
+FastAPI o--u log_router
 
-task_router          "1" *.-u "1" DAL
-task_executor_router "1" *.-u "1" DAL
-log_router           "1" *.-u "1" DAL
+task_router          "1" *--u "1" DAL
+task_executor_router "1" *--u "1" DAL
+log_router           "1" *--u "1" DAL
 
 
 package util {
@@ -239,16 +239,16 @@ package util {
         + flush()
         - _flush_periodically(int)
     }
-    OutputLogger "1" *.- "1" db.connection.Session
-    OutputLogger "1" .--* "1" TaskExecutor
-    OutputLogger "1" .--* "1" ExecutionMonitor
+    OutputLogger "1" *-- "1" db.connection.Session
+    OutputLogger "1" ---* "1" TaskExecutor
+    OutputLogger "1" ---* "1" ExecutionMonitor
 
     SingletonMeta .--l> OutputLogger
     ExecutionManager .u> SingletonMeta
 }
 
 class main {}
-main "1" *.- "1" Server
-main "1" *.-u "1" ExecutionManager
+main "1" *-- "1" Server
+main "1" *--u "1" ExecutionManager
 
 @enduml
