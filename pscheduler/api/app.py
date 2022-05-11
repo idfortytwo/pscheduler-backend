@@ -1,7 +1,9 @@
+import os
+
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from uvicorn import Server, Config
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 
 from api.routers import router
 
@@ -16,9 +18,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-config = dotenv_values('.env')
-host = config['APP_HOST']
-port = int(config['APP_PORT'])
+load_dotenv()
+host = os.environ['APP_HOST']
+port = int(os.environ['APP_PORT'])
 
 config = Config(app=app, host=host, port=port, loop='asyncio')
 server = Server(config)

@@ -1,6 +1,8 @@
+import os
+
 from contextlib import asynccontextmanager
 from typing import ContextManager, Callable, TypeVar, Union
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker as sqlalchemy_sessionmaker, Session as NormalSession
 
@@ -13,12 +15,12 @@ def sessionmaker(bind, class_: T) -> T:
 
 
 try:
-    conn_config = dotenv_values('.env')
-    user = conn_config['DB_USER']
-    pwd = conn_config['DB_PASS']
-    host = conn_config['DB_HOST']
-    port = conn_config['DB_PORT']
-    database = conn_config['DB_DATABASE']
+    load_dotenv()
+    user = os.environ['DB_USER']
+    pwd = os.environ['DB_PASS']
+    host = os.environ['DB_HOST']
+    port = os.environ['DB_PORT']
+    database = os.environ['DB_DATABASE']
     conn_str = f"postgresql+asyncpg://{user}:{pwd}@{host}:{port}/{database}"
 
     engine = create_async_engine(conn_str)
